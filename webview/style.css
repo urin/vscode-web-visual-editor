@@ -1,0 +1,37 @@
+* {
+  user-select: none;
+  outline: none;
+  cursor: default;
+}
+
+html {
+  overflow: auto;
+}
+
+#selector {
+  position: absolute;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  width: 0;
+  height: 0;
+  background-color: oklch(1 0 0 / 0.15);
+  box-shadow: 0 0 0 1px oklch(0.7 0.2 230);
+}
+
+.wve-selectable:hover {
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+.wve-selected {
+  cursor: grab;
+}
+
+.wve-selected,
+.wve-selected:hover {
+  box-shadow: 0 0 0 2px oklch(0.7 0.3 230 / 0.8);
+}
+
+.wve-selected:active {
+  cursor: grabbing;
+}

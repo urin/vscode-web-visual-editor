@@ -1,0 +1,80 @@
+{
+  "name": "web-visual-editor",
+  "displayName": "web-visual-editor",
+  "description": "Edit HTML files visually.",
+  "version": "0.0.1",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "js-beautify": "^1.15.1",
+    "jsdom": "^24.1.1"
+  },
+  "devDependencies": {
+    "@types/js-beautify": "^1.14.3",
+    "@types/jsdom": "^21.1.7",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.92.0",
+    "@typescript-eslint/eslint-plugin": "^7.14.1",
+    "@typescript-eslint/parser": "^7.11.0",
+    "@vscode/test-cli": "^0.0.9",
+    "@vscode/test-electron": "^2.4.0",
+    "esbuild": "^0.21.5",
+    "eslint": "^8.57.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.4.5"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "web-visual-editor.open",
+        "title": "Open Visual Editor",
+        "icon": "$(notebook-render-output)"
+      }
+    ],
+    "customEditors": [
+      {
+        "priority": "option",
+        "viewType": "web-visual-editor.customeEditor",
+        "displayName": "Visual Editor",
+        "selector": [
+            { "filenamePattern": "*.html" },
+            { "filenamePattern": "*.htm" },
+            { "filenamePattern": "*.xhtml" },
+            { "filenamePattern": "*.shtml" },
+            { "filenamePattern": "*.xht" },
+            { "filenamePattern": "*.mhtml" },
+            { "filenamePattern": "*.mht" },
+            { "filenamePattern": "*.ehtml" }
+        ]
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "web-visual-editor.open",
+          "when": "resourceLangId == html",
+          "group": "navigation"
+        }
+      ]
+    }
+  }
+}
