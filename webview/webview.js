@@ -187,8 +187,12 @@ function postMessageOnCopyAndCut(event) {
 }
 document.addEventListener('copy', postMessageOnCopyAndCut);
 document.addEventListener('cut', postMessageOnCopyAndCut);
-
-// TODO: Support pasting
+document.addEventListener('paste', event => {
+  vscode.postMessage({
+    type: 'paste',
+    data: event.clipboardData.getData('text')
+  });
+});
 
 // Initial display
 document.addEventListener('DOMContentLoaded', async () => {

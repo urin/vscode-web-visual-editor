@@ -7,6 +7,7 @@ import path from 'path';
 export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   private readonly context: vscode.ExtensionContext;
+  private editorOptions = { insertSpaces: true, indentSize: 2 };
 
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
@@ -17,11 +18,24 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel: vscode.WebviewPanel,
     _: vscode.CancellationToken
   ): Promise<void> {
-    // Retrieve editor options from the panel opening source
-    // NOTE Each member of options is an accessor and is not retained until another event, so save as a clone
-    const editorOptions = {
-      ...vscode.window.visibleTextEditors.find(e => e.document === code)?.options!
-    };
+    // Get indentation setting.
+    const config = vscode.workspace.getConfiguration('editor', {
+      languageId: 'html', uri: code.uri
+    });
+    Object.assign(this.editorOptions, {
+      insertSpaces: !!config.get<boolean>('insertSpaces'),
+      indentSize: config.get<number>('tabSize')
+    });
+    const updateEditorOptions = vscode.window.onDidChangeVisibleTextEditors(async editors => {
+      updateEditorOptions.dispose();
+      const htmlEditor = editors.find(e => e.document === code);
+      if (!htmlEditor) { return; }
+      const options = htmlEditor.options;
+      Object.assign(this.editorOptions, {
+        insertSpaces: options.insertSpaces,
+        indentSize: options.indentSize
+      });
+    });
     // Initialize WebView
     panel.webview.options = { enableScripts: true };
     panel.onDidDispose(() => { subscription.dispose(); });
@@ -39,11 +53,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel.webview.onDidReceiveMessage(event => {
       switch (event.type) {
       case 'move':
-        this.moveElements(code, editorOptions, event);
+        this.moveElements(code, event);
         return;
       case 'copy':
       case 'cut':
         this.copyOrCutElements(code, event);
+        return;
+      case 'paste':
+        this.pasteElements(code, event);
         return;
       }
     });
@@ -65,7 +82,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       return new vscode.Range(start, end);
     });
     vscode.env.clipboard.writeText(
-      ranges.map((range: vscode.Range) => code.getText(range)).join('\n')
+      this.formatHtml(
+        ranges.map((range: vscode.Range) => code.getText(range)).join('\n')
+      )
     );
     if (event.type === 'cut') {
       const edit = new vscode.WorkspaceEdit();
@@ -74,8 +93,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     }
   }
 
+  // TODO Paste process on the WebView
+  private pasteElements(code: vscode.TextDocument, event: any) {
+  }
+
   // Reflect element movement on the WebView side to the source code
-  private moveElements(code: vscode.TextDocument, editorOptions: vscode.TextEditorOptions, event: any) {
+  private moveElements(code: vscode.TextDocument, event: any) {
     const edit = new vscode.WorkspaceEdit();
     event.data.forEach((operation: any) => {
       const range = new vscode.Range(
@@ -91,14 +114,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         );
       }
       dom.setAttribute('style', operation.style);
-      const indentSize = +editorOptions.indentSize!;
-      const html = beautify.html(dom.outerHTML, {
-        indent_size: indentSize,
-        indent_level: Math.ceil(
-          code.lineAt(range.start.line).firstNonWhitespaceCharacterIndex / indentSize
-        ),
-        indent_char: editorOptions.insertSpaces ? ' ' : '\t'
-      }).trimStart();
+      const { insertSpaces, indentSize } = this.editorOptions;
+      const indentLevel = Math.ceil(
+        code.lineAt(range.start.line).firstNonWhitespaceCharacterIndex
+        / (insertSpaces ? indentSize : 1)
+      );
+      const html = this.formatHtml(dom.outerHTML, { indent_level: indentLevel }).trimStart();
       edit.replace(code.uri, range, html);
     });
     vscode.workspace.applyEdit(edit);
@@ -160,5 +181,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       el.setAttribute('data-wve-code-end', location.endOffset.toString());
     });
     webview.html = dom.serialize();
+  }
+
+  private formatHtml(
+    html: string, options: js_beautify.HTMLBeautifyOptions = {}
+  ): string {
+    const formatOptions = Object.assign({
+      indent_char: this.editorOptions.insertSpaces ? ' ' : '\t',
+      indent_size: this.editorOptions.indentSize
+    }, options);
+    return beautify.html(html.trim(), formatOptions);
   }
 }
