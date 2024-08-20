@@ -35,8 +35,8 @@ class App {
   }
 
   // Event handlers
+  // NOTE Define as arrow functions so that `this` is correctly referenced
 
-  // NOTE Define as an arrow function so that this is correctly referenced when the event is registered
   // Draw a rectangle of the selection area
   drawSelector = () => {
     if (this.operation !== 'selecting') { return; }
@@ -52,7 +52,31 @@ class App {
     selector.style.display = 'block';
   };
 
-  onMouseDown = (event) => {
+  onKeyDown = event => {
+    switch (event.key) {
+    case 'Shift':
+      this.keyboard.shift = true;
+      break;
+    case 'Control':
+      this.keyboard.ctrl = true;
+      break;
+    }
+    this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
+  };
+
+  onKeyUp = event => {
+    switch (event.key) {
+    case 'Shift':
+      this.keyboard.shift = false;
+      break;
+    case 'Control':
+      this.keyboard.ctrl = false;
+      break;
+    }
+    this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
+  };
+
+  onMouseDown = event => {
     this.startX = this.currentX = event.pageX;
     this.startY = this.currentY = event.pageY;
     // Determine whether to select or edit the element based on the click position
@@ -87,7 +111,7 @@ class App {
     document.addEventListener('mousemove', this.onMouseMove);
   };
 
-  onMouseMove = (event) => {
+  onMouseMove = event => {
     const dx = event.pageX - this.currentX;
     const dy = event.pageY - this.currentY;
     this.currentX = event.pageX;
@@ -102,7 +126,7 @@ class App {
     });
   };
 
-  onMouseUp = (event) => {
+  onMouseUp = event => {
     document.removeEventListener('mousemove', this.onMouseMove);
     if (this.operation === 'selecting') {
       const selectorRect = this.selector.getBoundingClientRect();
@@ -148,28 +172,8 @@ class App {
 const app = new App();
 
 // Keep update the state of the keyboard being pressed
-document.addEventListener('keydown', event => {
-  switch (event.key) {
-  case 'Shift':
-    app.keyboard.shift = true;
-    break;
-  case 'Control':
-    app.keyboard.ctrl = true;
-    break;
-  }
-  app.keyboard.shiftOrCtrl = app.keyboard.shift || app.keyboard.ctrl;
-});
-document.addEventListener('keyup', function (event) {
-  switch (event.key) {
-  case 'Shift':
-    app.keyboard.shift = false;
-    break;
-  case 'Control':
-    app.keyboard.ctrl = false;
-    break;
-  }
-  app.keyboard.shiftOrCtrl = app.keyboard.shift || app.keyboard.ctrl;
-});
+document.addEventListener('keydown', app.onKeyDown);
+document.addEventListener('keyup', app.onKeyUp);
 
 // Copy and cut events
 function postMessageOnCopyAndCut(event) {
