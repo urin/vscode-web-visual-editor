@@ -43,6 +43,13 @@
         "group": "watch",
         "reveal": "never"
       }
+    },
+    {
+      "label": "publish-extension",
+      "type": "shell",
+      "command": "vsce publish",
+      "group": "build",
+      "problemMatcher": []
     }
   ]
 }

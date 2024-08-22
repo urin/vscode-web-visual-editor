@@ -1,15 +1,27 @@
 {
-  "name": "web-visual-editor",
-  "displayName": "web-visual-editor",
+  "name": "vscode-web-visual-editor",
+  "displayName": "Web Visual Editor",
   "description": "Edit HTML files visually.",
-  "version": "0.0.1",
-  "main": "./dist/extension.js",
-  "engines": {
-    "vscode": "^1.92.0"
-  },
   "categories": [
     "Visualization"
   ],
+  "extensionKind": [
+    "ui"
+  ],
+  "icon": "images/icon-logo.png",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "publisher": "Urin",
+  "author": "Urin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/urin/vscode-web-visual-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/urin/vscode-web-visual-editor/issues"
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
@@ -42,12 +54,19 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^5.4.5"
   },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:html"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "web-visual-editor.open",
         "title": "Open Visual Editor",
-        "icon": "$(notebook-render-output)"
+        "icon": {
+          "light": "images/icon-light.png",
+          "dark": "images/icon-dark.png"
+        }
       }
     ],
     "customEditors": [
@@ -56,14 +75,30 @@
         "viewType": "web-visual-editor.customeEditor",
         "displayName": "Visual Editor",
         "selector": [
-            { "filenamePattern": "*.html" },
-            { "filenamePattern": "*.htm" },
-            { "filenamePattern": "*.xhtml" },
-            { "filenamePattern": "*.shtml" },
-            { "filenamePattern": "*.xht" },
-            { "filenamePattern": "*.mhtml" },
-            { "filenamePattern": "*.mht" },
-            { "filenamePattern": "*.ehtml" }
+          {
+            "filenamePattern": "*.html"
+          },
+          {
+            "filenamePattern": "*.htm"
+          },
+          {
+            "filenamePattern": "*.xhtml"
+          },
+          {
+            "filenamePattern": "*.shtml"
+          },
+          {
+            "filenamePattern": "*.xht"
+          },
+          {
+            "filenamePattern": "*.mhtml"
+          },
+          {
+            "filenamePattern": "*.mht"
+          },
+          {
+            "filenamePattern": "*.ehtml"
+          }
         ]
       }
     ],
