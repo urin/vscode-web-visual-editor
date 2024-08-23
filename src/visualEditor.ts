@@ -41,7 +41,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel.onDidDispose(() => { subscription.dispose(); });
     this.updateWebview(panel.webview, code);
 
-    // Process when the source code changes
+    // Process when source code changes
     const subscription = vscode.workspace.onDidChangeTextDocument(event => {
       if (event.document !== code || event.contentChanges.length === 0) {
         return;
@@ -51,30 +51,82 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
     // Event notification from WebView
     panel.webview.onDidReceiveMessage(event => {
+      console.debug(event);
       switch (event.type) {
-      case 'move':
-        this.moveElements(code, event);
-        return;
-      case 'copy':
-      case 'cut':
-        this.copyOrCutElements(code, event);
-        return;
-      case 'paste':
-        this.pasteElements(code, event);
-        return;
+        case 'edit':
+          this.editElements(code, event);
+          return;
+        case 'copy':
+        case 'cut':
+          this.copyOrCutElements(code, event);
+          return;
+        case 'paste':
+          this.pasteElements(code, event);
+          return;
       }
     });
   }
 
-  // Copy process on the WebView
+  // Reflect edits on WebView to source code
+  private editElements(code: vscode.TextDocument, event: any) {
+    const edit = new vscode.WorkspaceEdit();
+    let shouldEdit = false;
+    event.data.forEach((codeEdit: any) => {
+      const range = new vscode.Range(
+        code.positionAt(codeEdit.codeRange.start),
+        code.positionAt(codeEdit.codeRange.end)
+      );
+      const text = code.getText(range);
+      const fragment = JSDOM.fragment(text).firstElementChild;
+      if (fragment === null) {
+        throw Error(
+          'Failed to create virtual DOM from code fragment of '
+          + `${code.fileName}(${codeEdit.codeRange.start}, ${codeEdit.codeRange.end})\n`
+          + text
+        );
+      }
+      codeEdit.operations.forEach((operation: any) => {
+        switch (operation.type) {
+          case 'select':
+            if (!fragment.hasAttribute('wve-selected')) {
+              shouldEdit = true;
+              fragment.setAttribute('wve-selected', '');
+            }
+            break;
+          case 'deselect':
+            if (fragment.hasAttribute('wve-selected')) {
+              shouldEdit = true;
+              fragment.removeAttribute('wve-selected');
+            }
+            break;
+          case 'move':
+            shouldEdit = true;
+            fragment.setAttribute('style', operation.style);
+            break;
+        }
+      });
+      const { insertSpaces, indentSize } = this.editorOptions;
+      const indentLevel = Math.ceil(
+        code.lineAt(range.start.line).firstNonWhitespaceCharacterIndex
+        / (insertSpaces ? indentSize : 1)
+      );
+      const html = this.formatHtml(fragment.outerHTML, { indent_level: indentLevel }).trimStart();
+      edit.replace(code.uri, range, html);
+    });
+    if (shouldEdit) {
+      vscode.workspace.applyEdit(edit);
+    }
+  }
+
+  // Copy or Cut process on WebView
   private copyOrCutElements(code: vscode.TextDocument, event: any) {
     const ranges = event.data.map((operation: any) => {
-      let start = code.positionAt(operation.code.start);
+      let start = code.positionAt(operation.codeRange.start);
       const lineStart = code.lineAt(start.line);
       if (start.character === lineStart.firstNonWhitespaceCharacterIndex) {
         start = lineStart.range.start;
       }
-      let end = code.positionAt(operation.code.end);
+      let end = code.positionAt(operation.codeRange.end);
       const lineEnd = code.lineAt(end.line);
       if (end.isEqual(lineEnd.range.end)) {
         end = lineEnd.rangeIncludingLineBreak.end;
@@ -84,7 +136,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     vscode.env.clipboard.writeText(
       this.formatHtml(
         ranges.map((range: vscode.Range) => code.getText(range)).join('\n')
-      )
+      ) + '\n'
     );
     if (event.type === 'cut') {
       const edit = new vscode.WorkspaceEdit();
@@ -93,43 +145,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     }
   }
 
-  // TODO Paste process on the WebView
+  // TODO Paste process on WebView
   private pasteElements(code: vscode.TextDocument, event: any) {
   }
 
-  // Reflect element movement on the WebView side to the source code
-  private moveElements(code: vscode.TextDocument, event: any) {
-    const edit = new vscode.WorkspaceEdit();
-    event.data.forEach((operation: any) => {
-      const range = new vscode.Range(
-        code.positionAt(operation.code.start),
-        code.positionAt(operation.code.end)
-      );
-      const text = code.getText(range);
-      const dom = JSDOM.fragment(text).firstElementChild;
-      if (dom === null) {
-        throw Error(
-          'Failed to create virtual DOM from code fragment of '
-          + `${code.fileName}(${operation.code.start}, ${operation.code.end})\n${text}`
-        );
-      }
-      dom.setAttribute('style', operation.style);
-      const { insertSpaces, indentSize } = this.editorOptions;
-      const indentLevel = Math.ceil(
-        code.lineAt(range.start.line).firstNonWhitespaceCharacterIndex
-        / (insertSpaces ? indentSize : 1)
-      );
-      const html = this.formatHtml(dom.outerHTML, { indent_level: indentLevel }).trimStart();
-      edit.replace(code.uri, range, html);
-    });
-    vscode.workspace.applyEdit(edit);
-  }
-
-  // Reflect the content of the source code to the WebView
+  // Reflect content of source code to WebView
   private updateWebview(webview: vscode.Webview, code: vscode.TextDocument) {
     const dom = new JSDOM(code.getText(), { includeNodeLocations: true });
     const document = dom.window.document;
-    // Disable scripts in the code
+    // Disable scripts in code
     // NOTE Event scripts specified as element attributes are not disabled,
     // but for performance reasons, they are not disabled.
     document.querySelectorAll('script').forEach(el => { el.remove(); });
@@ -150,14 +174,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         el.setAttribute(attr, safeUri);
       });
     });
-    // Incorporate CSS files into the layer and lower their priority
+    // Incorporate CSS files into layer and lower their priority
     const style = document.createElement('style');
     document.querySelectorAll('link[href][rel=stylesheet]').forEach(el => {
       style.append(`@import url('${el.getAttribute('href')}') layer(base);\n`);
       el.remove();
     });
     document.head.appendChild(style);
-    // Incorporate resources on the WebView side
+    // Incorporate resources on WebView side
     const link = document.createElement('link');
     link.setAttribute('rel', 'stylesheet');
     link.setAttribute('href',
@@ -173,10 +197,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       ).toString()
     );
     document.head.appendChild(script);
-    // Add source code location information to all elements in the body
+    // Add source code location information to all elements in body
     document.body.querySelectorAll('*').forEach(el => {
       const location = dom.nodeLocation(el);
-      if (!location) { throw Error(`Failed to get nodeLocation of the element ${el}`); }
+      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
       el.setAttribute('data-wve-code-start', location.startOffset.toString());
       el.setAttribute('data-wve-code-end', location.endOffset.toString());
     });
@@ -187,9 +211,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     html: string, options: js_beautify.HTMLBeautifyOptions = {}
   ): string {
     const formatOptions = Object.assign({
+      indent_with_tabs: !this.editorOptions.insertSpaces,
       indent_char: this.editorOptions.insertSpaces ? ' ' : '\t',
       indent_size: this.editorOptions.indentSize
     }, options);
-    return beautify.html(html.trim(), formatOptions);
+    return beautify.html(html, formatOptions).replace(/(\bwve-[\-\w]+)\s*=\s*""/g, '$1');
   }
 }

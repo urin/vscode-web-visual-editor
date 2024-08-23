@@ -23,15 +23,17 @@ html {
   box-shadow: 0 0 0 1px currentColor;
 }
 
-.wve-selected {
+[wve-selected],
+[wve-selected] * {
   cursor: grab;
 }
 
-.wve-selected,
-.wve-selected:hover {
+[wve-selected],
+[wve-selected]:hover {
   box-shadow: 0 0 0 2px oklch(0.7 0.3 230 / 0.8);
 }
 
-.wve-selected:active {
+[wve-selected]:active,
+[wve-selected] *:active {
   cursor: grabbing;
 }

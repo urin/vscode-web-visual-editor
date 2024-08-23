@@ -1,6 +1,7 @@
 const vscode = acquireVsCodeApi();
 
 class App {
+  codeEdits = [];
   operation = '';
   keyboard = {
     shiftOrCtrl: false,
@@ -13,24 +14,101 @@ class App {
   currentY = 0;
   selector = null;
   selectables = [];
-  selected = [];
-  // Add class attributes to the selected elements, excluding ancestor elements of the selected elements
-  organizeSelection() {
-    this.selected = this.selected.filter(el => {
-      const shouldRemove = this.selected.some(other => other !== el && el.contains(other));
-      el.classList[shouldRemove ? 'remove' : 'add']('wve-selected');
-      return !shouldRemove;
-    });
+  selected = new Set();
+
+  // Emit code edit event to extension
+  emitCodeEdits() {
+    if (this.codeEdits.length > 0) {
+      const data = this.codeEdits.map(edit => {
+        const el = edit.element;
+        return {
+          element:
+            el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+            + Array.from(el.classList).filter(c => !c.startsWith('wve')).map(c => `.${c}`).join(''),
+          codeRange: {
+            start: +edit.element.dataset.wveCodeStart,
+            end: +edit.element.dataset.wveCodeEnd
+          },
+          operations: edit.operations
+        };
+      });
+      vscode.postMessage({ type: 'edit', data });
+      this.codeEdits = [];
+    }
   }
-  // Deselect if the element is selected, otherwise add it
+  // Select element
+  select(element) {
+    if (this.selected.has(element)) { return; }
+    if (this.selected.values().some(s => s.contains(element) || element.contains(s))) {
+      return;
+    }
+    if (this.codeEdits.some(
+      c => c.element !== element && (c.element.contains(element) || element.contains(c.element))
+    )) {
+      return;
+    }
+    this.selected.add(element);
+    element.setAttribute('wve-selected', '');
+    const updated = this.codeEdits.some(edit => {
+      if (edit.element === element) {
+        const toggled = edit.operations.some(o => {
+          if (o.type === 'deselect') {
+            o.type = 'select';
+            return true;
+          }
+        });
+        if (!toggled) {
+          edit.operations.push({ type: 'select' });
+        }
+        return true;
+      }
+    });
+    if (!updated) {
+      this.codeEdits.push({
+        element, operations: [{ type: 'select' }]
+      });
+    }
+  }
+  // Deselect element
+  deselect(element = null) {
+    if (!element) {
+      document.body.querySelectorAll('[wve-selected]').forEach(el => { this.deselect(el); });
+      return;
+    }
+    if (!this.selected.has(element)) { return; }
+    if (this.codeEdits.some(
+      c => c.element !== element && (c.element.contains(element) || element.contains(c.element))
+    )) {
+      return;
+    }
+    this.selected.delete(element);
+    element.removeAttribute('wve-selected');
+    const updated = this.codeEdits.some(edit => {
+      if (edit.element === element) {
+        const toggled = edit.operations.some(o => {
+          if (o.type === 'select') {
+            o.type = 'deselect';
+            return true;
+          }
+        });
+        if (!toggled) {
+          edit.operations.push({ type: 'deselect' });
+        }
+        return true;
+      }
+    });
+    if (!updated) {
+      this.codeEdits.push({
+        element, operations: [{ type: 'deselect' }]
+      });
+    }
+  }
+  // Deselect if the element is selected, otherwise select it
   toggleSelection(el) {
-    const index = this.selected.indexOf(el);
-    if (index < 0) {
-      this.selected.push(el);
-      el.classList.add('wve-selected');
+    if (this.selected.has(el)) {
+      this.deselect(el);
     } else {
-      this.selected.splice(index, 1);
-      el.classList.remove('wve-selected');
+      this.select(el);
     }
   }
 
@@ -42,7 +120,8 @@ class App {
     if (this.operation !== 'selecting') { return; }
     requestAnimationFrame(this.drawSelector);
     const [width, height] = [
-      Math.abs(this.currentX - this.startX), Math.abs(this.currentY - this.startY)
+      Math.abs(this.currentX - this.startX),
+      Math.abs(this.currentY - this.startY)
     ];
     const selector = this.selector;
     selector.style.width = width + 'px';
@@ -54,24 +133,28 @@ class App {
 
   onKeyDown = event => {
     switch (event.key) {
-    case 'Shift':
-      this.keyboard.shift = true;
-      break;
-    case 'Control':
-      this.keyboard.ctrl = true;
-      break;
+      case 'Escape':
+        this.deselect();
+        this.emitCodeEdits();
+        break;
+      case 'Shift':
+        this.keyboard.shift = true;
+        break;
+      case 'Control':
+        this.keyboard.ctrl = true;
+        break;
     }
     this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
   };
 
   onKeyUp = event => {
     switch (event.key) {
-    case 'Shift':
-      this.keyboard.shift = false;
-      break;
-    case 'Control':
-      this.keyboard.ctrl = false;
-      break;
+      case 'Shift':
+        this.keyboard.shift = false;
+        break;
+      case 'Control':
+        this.keyboard.ctrl = false;
+        break;
     }
     this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
   };
@@ -80,7 +163,7 @@ class App {
     this.startX = this.currentX = event.pageX;
     this.startY = this.currentY = event.pageY;
     // Determine whether to select or edit the element based on the click position
-    const atSelected = this.selected.some(el => {
+    const atSelected = this.selected.values().some(el => {
       const rect = el.getBoundingClientRect();
       return (
         rect.left <= this.currentX && this.currentX <= rect.right
@@ -97,14 +180,6 @@ class App {
     }
     // Process at the start of selection
     if (this.operation === 'selecting') {
-      if (!this.keyboard.shiftOrCtrl) {
-        this.selected.forEach(el => el.classList.remove('wve-selected'));
-        this.selected = [];
-      }
-      if (this.selectables.includes(event.target)) {
-        this.toggleSelection(event.target);
-        this.organizeSelection();
-      }
       this.drawSelector();
     }
     document.addEventListener('mouseup', this.onMouseUp, { once: true });
@@ -129,43 +204,54 @@ class App {
   onMouseUp = event => {
     document.removeEventListener('mousemove', this.onMouseMove);
     if (this.operation === 'selecting') {
+      if (!this.keyboard.shiftOrCtrl) { this.deselect(); }
       const selectorRect = this.selector.getBoundingClientRect();
       if (selectorRect.width > 0 && selectorRect.height > 0) {
         const targets = this.selectables.filter(el => {
           const rect = el.getBoundingClientRect();
           return !(
-            rect.top > selectorRect.bottom ||
+            selectorRect.right < rect.left ||
             rect.right < selectorRect.left ||
-            rect.bottom < selectorRect.top ||
-            rect.left > selectorRect.right
+            selectorRect.bottom < rect.top ||
+            rect.bottom < selectorRect.top
+          ) && !(
+            rect.left <= selectorRect.left &&
+            selectorRect.right <= rect.right &&
+            rect.top <= selectorRect.top &&
+            selectorRect.bottom <= rect.bottom
           );
         });
         if (this.keyboard.shiftOrCtrl) {
-          targets.forEach(this.toggleSelection);
+          targets.forEach(el => this.toggleSelection(el));
         } else {
-          this.selected = targets;
+          targets.forEach(el => this.select(el));
         }
-        this.organizeSelection();
+      } else if (this.selectables.includes(event.target)) {
+        if (this.keyboard.shiftOrCtrl) {
+          this.toggleSelection(event.target);
+        } else {
+          this.select(event.target);
+        }
       }
       this.selector.style.display = 'none';
     } else {
       if (this.startX !== this.currentX || this.startY !== this.currentY) {
-        vscode.postMessage({
-          type: 'move',
-          data: this.selected.map(el => {
-            return {
-              code: {
-                start: +el.dataset.wveCodeStart,
-                end: +el.dataset.wveCodeEnd
-              },
-              style:
-                el.getAttribute('style')
-            };
-          })
+        this.selected.forEach(element => {
+          const operation = { type: 'move', style: element.getAttribute('style') };
+          const updated = this.codeEdits.some(edit => {
+            if (edit.element === element) {
+              edit.operations.push(operation);
+              return true;
+            }
+          });
+          if (!updated) {
+            this.codeEdits.push({ element, operations: [operation] });
+          }
         });
       }
     }
     this.operation = '';
+    this.emitCodeEdits();
   };
 };
 
@@ -179,9 +265,9 @@ document.addEventListener('keyup', app.onKeyUp);
 function postMessageOnCopyAndCut(event) {
   vscode.postMessage({
     type: event.type,
-    data: app.selected.map(el => {
+    data: Array.from(app.selected).map(el => {
       return {
-        code: {
+        codeRange: {
           start: +el.dataset.wveCodeStart,
           end: +el.dataset.wveCodeEnd
         }
@@ -233,10 +319,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     el.dataset.wvePropY = propY;
     app.selectables.push(el);
   });
+  app.selected = new Set(Array.from(document.querySelectorAll('[wve-selected]')));
   // Add selector
   app.selector = document.createElement('div');
   app.selector.id = 'selector';
-  document.body.append(app.selector);
+  document.body.appendChild(app.selector);
   // Click (drag start) event
   document.addEventListener('mousedown', app.onMouseDown);
 });
