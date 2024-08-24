@@ -8,27 +8,18 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   private readonly context: vscode.ExtensionContext;
   private editorOptions = { insertSpaces: true, indentSize: 2 };
+  private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
 
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
-  }
-
-  public async resolveCustomTextEditor(
-    code: vscode.TextDocument,
-    panel: vscode.WebviewPanel,
-    _: vscode.CancellationToken
-  ): Promise<void> {
-    // Get indentation setting.
-    const config = vscode.workspace.getConfiguration('editor', {
-      languageId: 'html', uri: code.uri
-    });
+    // Get and update indentation setting
+    const config = vscode.workspace.getConfiguration('editor', { languageId: 'html' });
     Object.assign(this.editorOptions, {
-      insertSpaces: !!config.get<boolean>('insertSpaces'),
-      indentSize: config.get<number>('tabSize')
+      insertSpaces: !!config.get('insertSpaces'),
+      indentSize: config.get('tabSize')
     });
-    const updateEditorOptions = vscode.window.onDidChangeVisibleTextEditors(async editors => {
-      updateEditorOptions.dispose();
-      const htmlEditor = editors.find(e => e.document === code);
+    vscode.window.onDidChangeVisibleTextEditors(editors => {
+      const htmlEditor = editors.find(e => e.document.languageId === 'html');
       if (!htmlEditor) { return; }
       const options = htmlEditor.options;
       Object.assign(this.editorOptions, {
@@ -36,19 +27,40 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         indentSize: options.indentSize
       });
     });
-    // Initialize WebView
-    panel.webview.options = { enableScripts: true };
-    panel.onDidDispose(() => { subscription.dispose(); });
-    this.updateWebview(panel.webview, code);
-
     // Process when source code changes
-    const subscription = vscode.workspace.onDidChangeTextDocument(event => {
-      if (event.document !== code || event.contentChanges.length === 0) {
+    vscode.workspace.onDidChangeTextDocument(event => {
+      if (!this.codes.has(event.document) || event.contentChanges.length === 0) {
         return;
       }
-      this.updateWebview(panel.webview, code);
+      const code = event.document;
+      const panels = this.codes.get(code)!;
+      panels.forEach(panel => {
+        this.updateWebview(panel.webview, code);
+      });
     });
+  }
 
+  public async resolveCustomTextEditor(
+    code: vscode.TextDocument,
+    panel: vscode.WebviewPanel,
+    _: vscode.CancellationToken
+  ): Promise<void> {
+    // Manage webview panels
+    if (this.codes.has(code)) {
+      this.codes.get(code)?.add(panel);
+    } else {
+      const panels = new Set<vscode.WebviewPanel>();
+      panels.add(panel);
+      this.codes.set(code, panels);
+    }
+    // Initialize WebView
+    panel.webview.options = { enableScripts: true };
+    panel.onDidDispose(() => {
+      this.codes.get(code)?.delete(panel);
+      if (this.codes.get(code)?.size === 0) {
+        this.codes.delete(code);
+      }
+    });
     // Event notification from WebView
     panel.webview.onDidReceiveMessage(event => {
       console.debug(event);
@@ -65,6 +77,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
           return;
       }
     });
+    // Update webview
+    this.updateWebview(panel.webview, code);
   }
 
   // Reflect edits on WebView to source code
