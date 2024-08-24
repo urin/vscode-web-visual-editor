@@ -215,6 +215,6 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       indent_char: this.editorOptions.insertSpaces ? ' ' : '\t',
       indent_size: this.editorOptions.indentSize
     }, options);
-    return beautify.html(html, formatOptions).replace(/(\bwve-[\-\w]+)\s*=\s*""/g, '$1');
+    return beautify.html(html, formatOptions);
   }
 }

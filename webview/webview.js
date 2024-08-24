@@ -4,9 +4,16 @@ class App {
   codeEdits = [];
   operation = '';
   keyboard = {
+    // Combined state
     shiftOrCtrl: false,
-    shift: false,
-    ctrl: false
+    arrow: false,
+    // Each key
+    Shift: false,
+    Control: false,
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false
   };
   startX = 0;
   startY = 0;
@@ -111,6 +118,21 @@ class App {
       this.select(el);
     }
   }
+  // Put moving operation
+  movementToCode() {
+    this.selected.forEach(element => {
+      const operation = { type: 'move', style: element.getAttribute('style') };
+      const updated = this.codeEdits.some(edit => {
+        if (edit.element === element) {
+          edit.operations.push(operation);
+          return true;
+        }
+      });
+      if (!updated) {
+        this.codeEdits.push({ element, operations: [operation] });
+      }
+    });
+  }
 
   // Event handlers
   // NOTE Define as arrow functions so that `this` is correctly referenced
@@ -131,6 +153,20 @@ class App {
     selector.style.display = 'block';
   };
 
+  // Keyboard events
+  setStateKeyboardPress(key) {
+    this.keyboard[key] = true;
+  }
+  setStateKeyboardRelease(key) {
+    this.keyboard[key] = false;
+  }
+  updateKeyboardCombinedState() {
+    const kbd = this.keyboard;
+    const prev = Object.assign({}, kbd);
+    kbd.shiftOrControl = kbd.Shift || kbd.Control;
+    kbd.arrow = kbd.ArrowUp || kbd.ArrowDown || kbd.ArrowLeft || kbd.ArrowRight;
+    return prev;
+  }
   onKeyDown = event => {
     switch (event.key) {
       case 'Escape':
@@ -138,25 +174,59 @@ class App {
         this.emitCodeEdits();
         break;
       case 'Shift':
-        this.keyboard.shift = true;
-        break;
       case 'Control':
-        this.keyboard.ctrl = true;
+      case 'ArrowUp':
+      case 'ArrowDown':
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        this.setStateKeyboardPress(event.key);
         break;
     }
-    this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
+    this.updateKeyboardCombinedState();
+
+    if (this.operation === '') {
+      const kbd = this.keyboard;
+      if ((kbd.ArrowUp || kbd.ArrowDown) && !(kbd.ArrowUp && kbd.ArrowDown)) {
+        this.selected.forEach(el => {
+          const propY = el.dataset.wvePropY;
+          const dy = (
+            ((propY === 'top' && kbd.ArrowDown) ||
+              (propY === 'bottom' && kbd.ArrowUp)) ? 1 : -1
+          );
+          const styles = el.computedStyleMap();
+          el.style[propY] = styles.get(propY).value + dy + 'px';
+        });
+      }
+      if ((kbd.ArrowLeft || kbd.ArrowRight) && !(kbd.ArrowLeft && kbd.ArrowRight)) {
+        this.selected.forEach(el => {
+          const propX = el.dataset.wvePropX;
+          const dx = (
+            ((propX === 'left' && kbd.ArrowRight) ||
+              (propX === 'right' && kbd.ArrowLeft)) ? 1 : -1
+          );
+          const styles = el.computedStyleMap();
+          el.style[propX] = styles.get(propX).value + dx + 'px';
+        });
+      }
+    }
   };
 
   onKeyUp = event => {
     switch (event.key) {
       case 'Shift':
-        this.keyboard.shift = false;
-        break;
       case 'Control':
-        this.keyboard.ctrl = false;
+      case 'ArrowUp':
+      case 'ArrowDown':
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        this.setStateKeyboardRelease(event.key);
         break;
     }
-    this.keyboard.shiftOrCtrl = this.keyboard.shift || this.keyboard.ctrl;
+    const prev = this.updateKeyboardCombinedState();
+    if (prev.arrow && !this.keyboard.arrow) {
+      this.movementToCode();
+      this.emitCodeEdits();
+    }
   };
 
   onMouseDown = event => {
@@ -170,7 +240,7 @@ class App {
         && rect.top <= this.currentY && this.currentY <= rect.bottom
       );
     });
-    if (!atSelected || this.keyboard.shiftOrCtrl) {
+    if (!atSelected || this.keyboard.shiftOrControl) {
       this.operation = 'selecting';
     } else if (atSelected) {
       this.operation = 'editing';
@@ -204,7 +274,7 @@ class App {
   onMouseUp = event => {
     document.removeEventListener('mousemove', this.onMouseMove);
     if (this.operation === 'selecting') {
-      if (!this.keyboard.shiftOrCtrl) { this.deselect(); }
+      if (!this.keyboard.shiftOrControl) { this.deselect(); }
       const selectorRect = this.selector.getBoundingClientRect();
       if (selectorRect.width > 0 && selectorRect.height > 0) {
         const targets = this.selectables.filter(el => {
@@ -221,13 +291,13 @@ class App {
             selectorRect.bottom <= rect.bottom
           );
         });
-        if (this.keyboard.shiftOrCtrl) {
+        if (this.keyboard.shiftOrControl) {
           targets.forEach(el => this.toggleSelection(el));
         } else {
           targets.forEach(el => this.select(el));
         }
       } else if (this.selectables.includes(event.target)) {
-        if (this.keyboard.shiftOrCtrl) {
+        if (this.keyboard.shiftOrControl) {
           this.toggleSelection(event.target);
         } else {
           this.select(event.target);
@@ -236,18 +306,7 @@ class App {
       this.selector.style.display = 'none';
     } else {
       if (this.startX !== this.currentX || this.startY !== this.currentY) {
-        this.selected.forEach(element => {
-          const operation = { type: 'move', style: element.getAttribute('style') };
-          const updated = this.codeEdits.some(edit => {
-            if (edit.element === element) {
-              edit.operations.push(operation);
-              return true;
-            }
-          });
-          if (!updated) {
-            this.codeEdits.push({ element, operations: [operation] });
-          }
-        });
+        this.movementToCode();
       }
     }
     this.operation = '';
@@ -256,33 +315,6 @@ class App {
 };
 
 const app = new App();
-
-// Keep update the state of the keyboard being pressed
-document.addEventListener('keydown', app.onKeyDown);
-document.addEventListener('keyup', app.onKeyUp);
-
-// Copy and cut events
-function postMessageOnCopyAndCut(event) {
-  vscode.postMessage({
-    type: event.type,
-    data: Array.from(app.selected).map(el => {
-      return {
-        codeRange: {
-          start: +el.dataset.wveCodeStart,
-          end: +el.dataset.wveCodeEnd
-        }
-      };
-    })
-  });
-}
-document.addEventListener('copy', postMessageOnCopyAndCut);
-document.addEventListener('cut', postMessageOnCopyAndCut);
-document.addEventListener('paste', event => {
-  vscode.postMessage({
-    type: 'paste',
-    data: event.clipboardData.getData('text')
-  });
-});
 
 // Initial display
 document.addEventListener('DOMContentLoaded', async () => {
@@ -326,4 +358,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.body.appendChild(app.selector);
   // Click (drag start) event
   document.addEventListener('mousedown', app.onMouseDown);
+  // Keep update the state of the keyboard being pressed
+  document.addEventListener('keydown', app.onKeyDown);
+  document.addEventListener('keyup', app.onKeyUp);
+  // Copy and cut events
+  function postMessageOnCopyAndCut(event) {
+    vscode.postMessage({
+      type: event.type,
+      data: Array.from(app.selected).map(el => {
+        return {
+          codeRange: {
+            start: +el.dataset.wveCodeStart,
+            end: +el.dataset.wveCodeEnd
+          }
+        };
+      })
+    });
+  }
+  document.addEventListener('copy', postMessageOnCopyAndCut);
+  document.addEventListener('cut', postMessageOnCopyAndCut);
+  document.addEventListener('paste', event => {
+    vscode.postMessage({
+      type: 'paste',
+      data: event.clipboardData.getData('text')
+    });
+  });
 });
