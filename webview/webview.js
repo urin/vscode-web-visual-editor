@@ -22,7 +22,6 @@ class App {
   selector = null;
   selectables = [];
   selected = new Set();
-  selectedBeforeEdit = new Map();
 
   shortName(el) {
     return (
@@ -34,7 +33,7 @@ class App {
   emitCodeEdits() {
     if (this.codeEdits.length === 0) { return; }
     const data = this.codeEdits.map(edit => {
-      const element = this.selectedBeforeEdit.get(edit.element);
+      const element = edit.element;
       return {
         element: this.shortName(element),
         codeRange: {
@@ -110,28 +109,6 @@ class App {
         this.codeEdits.push({ element, operations: [operation] });
       }
     });
-
-    this.updateCodeRange(document.body, 0);
-  }
-  updateCodeRange(element, offset) {
-    if (element.hasAttribute('data-wve-code-start')) {
-      element.setAttribute('data-wve-code-start',
-        (+element.dataset.wveCodeStart + offset).toString()
-      );
-    }
-    Array.from(element.children).forEach(child => {
-      offset = this.updateCodeRange(child, offset);
-    });
-    if (element.hasAttribute('data-wve-code-end')) {
-      if (element.hasAttribute('wve-selected')) {
-        offset += element.cloneNode(false).outerHTML.length
-          - this.selectedBeforeEdit.get(element).cloneNode(false).outerHTML.length;;
-      }
-    }
-    element.setAttribute('data-wve-code-end',
-      (+element.dataset.wveCodeEnd + offset).toString()
-    );
-    return offset;
   }
 
   // Event handlers
@@ -395,6 +372,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     vscode.postMessage({
       type: 'paste',
       data: event.clipboardData.getData('text')
+    });
+  });
+  // Message from extension host
+  window.addEventListener('message', ({ data }) => {
+    console.debug('Message from extension host', data);
+    const { type, data: ranges } = data;
+    console.debug('Doms', document.body.querySelectorAll('[data-wve-code-start]'));
+    document.body.querySelectorAll('[data-wve-code-start]').forEach((element, index) => {
+      switch (type) {
+        case 'codeRanges':
+          element.setAttribute('data-wve-code-start', ranges[index].start);
+          element.setAttribute('data-wve-code-end', ranges[index].end);
+          break;
+      }
     });
   });
 });

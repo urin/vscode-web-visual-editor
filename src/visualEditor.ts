@@ -35,9 +35,27 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         return;
       }
       this.codes.get(code)!.forEach(panel => {
-        if (this.editedBy.delete(panel)) { return; }
+        if (this.editedBy.delete(panel)) {
+          this.postCodeRanges(code, panel);
+          return;
+        }
         this.updateWebview(panel.webview, code);
       });
+    });
+
+  }
+
+  private postCodeRanges(code: vscode.TextDocument, panel: vscode.WebviewPanel) {
+    const dom = new JSDOM(code.getText(), { includeNodeLocations: true });
+    panel.webview.postMessage({
+      type: 'codeRanges',
+      data: Array.from(dom.window.document.body.querySelectorAll('*')).map(element => {
+        const range = dom.nodeLocation(element)!;
+        return {
+          element: this.shortName(element),
+          start: range.startOffset, end: range.endOffset
+        };
+      })
     });
   }
 
@@ -65,7 +83,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
     // Event notification from WebView
     panel.webview.onDidReceiveMessage(event => {
-      console.debug(event);
+      console.debug('Message from WebView', event);
       switch (event.type) {
         case 'edit':
           if (this.editElements(code, event)) {
@@ -208,6 +226,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       el.setAttribute('data-wve-code-end', location.endOffset.toString());
     });
     // Add timestamp to ensure update WebView
+    // NOTE WebView has HTML cache, and if the same string is set consecutively,
+    // it will not reflect it even if actual HTML on the WebView and
+    // the HTML being set are different.
     const timestamp = document.createElement('meta');
     timestamp.setAttribute('name', 'timestamp');
     timestamp.setAttribute('value', (new Date()).toISOString());
@@ -224,5 +245,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       indent_size: this.editorOptions.indentSize
     }, options);
     return beautify.html(html, formatOptions);
+  }
+
+  private shortName(el: Element) {
+    return (
+      el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+      + Array.from(el.classList).map(c => `.${c}`).join('')
+    );
   }
 }
