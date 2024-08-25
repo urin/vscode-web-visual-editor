@@ -62,17 +62,30 @@
     "commands": [
       {
         "command": "web-visual-editor.open",
-        "title": "Open Visual Editor",
+        "title": "Visual Editor",
         "icon": {
           "light": "images/icon-light.png",
           "dark": "images/icon-dark.png"
         }
+      },
+      {
+        "command": "web-visual-editor.openBeside",
+        "title": "Visual Editor to the Side",
+        "icon": {
+          "light": "images/icon-split-light.png",
+          "dark": "images/icon-split-dark.png"
+        }
+      },
+      {
+        "command": "web-visual-editor.showSource",
+        "title": "Show Source",
+        "icon": "$(go-to-file)"
       }
     ],
     "customEditors": [
       {
         "priority": "option",
-        "viewType": "web-visual-editor.customeEditor",
+        "viewType": "web-visual-editor.customEditor",
         "displayName": "Visual Editor",
         "selector": [
           {
@@ -106,7 +119,17 @@
       "editor/title": [
         {
           "command": "web-visual-editor.open",
-          "when": "resourceLangId == html",
+          "when": "resourceLangId == 'html' && activeCustomEditorId != 'web-visual-editor.customEditor'",
+          "group": "navigation"
+        },
+        {
+          "command": "web-visual-editor.openBeside",
+          "when": "resourceLangId == 'html' && activeCustomEditorId != 'web-visual-editor.customEditor'",
+          "group": "navigation"
+        },
+        {
+          "command": "web-visual-editor.showSource",
+          "when": "activeCustomEditorId == 'web-visual-editor.customEditor'",
           "group": "navigation"
         }
       ]

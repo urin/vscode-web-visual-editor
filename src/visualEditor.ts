@@ -6,6 +6,8 @@ import path from 'path';
 
 export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
+  public activeCode: vscode.TextDocument | null = null;
+
   private readonly context: vscode.ExtensionContext;
   private editorOptions = { insertSpaces: true, indentSize: 2 };
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
@@ -72,6 +74,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       panels.add(panel);
       this.codes.set(code, panels);
     }
+    panel.onDidChangeViewState(event => {
+      if (event.webviewPanel.visible) { this.activeCode = code; }
+    });
     // Initialize WebView
     panel.webview.options = { enableScripts: true };
     panel.onDidDispose(() => {
