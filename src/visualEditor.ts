@@ -9,6 +9,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly context: vscode.ExtensionContext;
   private editorOptions = { insertSpaces: true, indentSize: 2 };
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
+  private readonly editedBy = new Set<vscode.WebviewPanel>();
 
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
@@ -29,12 +30,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
     // Process when source code changes
     vscode.workspace.onDidChangeTextDocument(event => {
-      if (!this.codes.has(event.document) || event.contentChanges.length === 0) {
+      const code = event.document;
+      if (!this.codes.has(code) || event.contentChanges.length === 0) {
         return;
       }
-      const code = event.document;
-      const panels = this.codes.get(code)!;
-      panels.forEach(panel => {
+      this.codes.get(code)!.forEach(panel => {
+        if (this.editedBy.delete(panel)) { return; }
         this.updateWebview(panel.webview, code);
       });
     });
@@ -57,6 +58,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel.webview.options = { enableScripts: true };
     panel.onDidDispose(() => {
       this.codes.get(code)?.delete(panel);
+      this.editedBy.delete(panel);
       if (this.codes.get(code)?.size === 0) {
         this.codes.delete(code);
       }
@@ -66,7 +68,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       console.debug(event);
       switch (event.type) {
         case 'edit':
-          this.editElements(code, event);
+          if (this.editElements(code, event)) {
+            this.editedBy.add(panel);
+          }
           return;
         case 'copy':
         case 'cut':
@@ -100,24 +104,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         );
       }
       codeEdit.operations.forEach((operation: any) => {
-        switch (operation.type) {
-          case 'select':
-            if (!fragment.hasAttribute('wve-selected')) {
-              shouldEdit = true;
-              fragment.setAttribute('wve-selected', '');
-            }
-            break;
-          case 'deselect':
-            if (fragment.hasAttribute('wve-selected')) {
-              shouldEdit = true;
-              fragment.removeAttribute('wve-selected');
-            }
-            break;
-          case 'move':
-            shouldEdit = true;
-            fragment.setAttribute('style', operation.style);
-            break;
-        }
+        shouldEdit = true;
+        fragment.setAttribute('style', operation.style);
       });
       const { insertSpaces, indentSize } = this.editorOptions;
       const indentLevel = Math.ceil(
@@ -125,11 +113,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         / (insertSpaces ? indentSize : 1)
       );
       const html = this.formatHtml(fragment.outerHTML, { indent_level: indentLevel }).trimStart();
-      edit.replace(code.uri, range, html);
+      edit.replace(code.uri, range, html, { needsConfirmation: false, label: 'Edit on WebView' });
     });
     if (shouldEdit) {
       vscode.workspace.applyEdit(edit);
     }
+    return shouldEdit;
   }
 
   // Copy or Cut process on WebView
@@ -218,6 +207,11 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       el.setAttribute('data-wve-code-start', location.startOffset.toString());
       el.setAttribute('data-wve-code-end', location.endOffset.toString());
     });
+    // Add timestamp to ensure update WebView
+    const timestamp = document.createElement('meta');
+    timestamp.setAttribute('name', 'timestamp');
+    timestamp.setAttribute('value', (new Date()).toISOString());
+    document.head.appendChild(timestamp);
     webview.html = dom.serialize();
   }
 
