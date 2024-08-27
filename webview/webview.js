@@ -228,6 +228,7 @@ class App {
     });
     if (!atSelected || this.keyboard.shiftOrControl) {
       this.operation = 'selecting';
+      this.selector.style.display = 'block';
     } else if (atSelected) {
       this.operation = 'editing';
       this.beginEdit();
@@ -346,6 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Add selector
   app.selector = document.createElement('div');
   app.selector.id = 'selector';
+  app.selector.style.display = 'none';
   document.body.appendChild(app.selector);
   // Click (drag start) event
   document.addEventListener('mousedown', app.onMouseDown);
