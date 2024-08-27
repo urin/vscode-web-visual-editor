@@ -86,9 +86,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         this.codes.delete(code);
       }
     });
-    // Event notification from WebView
+    // Message from WebView
     panel.webview.onDidReceiveMessage(event => {
-      console.debug('Message from WebView', event);
       switch (event.type) {
         case 'edit':
           if (this.editElements(code, event)) {

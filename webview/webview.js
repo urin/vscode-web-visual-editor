@@ -376,9 +376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   // Message from extension host
   window.addEventListener('message', ({ data }) => {
-    console.debug('Message from extension host', data);
     const { type, data: ranges } = data;
-    console.debug('Doms', document.body.querySelectorAll('[data-wve-code-start]'));
     document.body.querySelectorAll('[data-wve-code-start]').forEach((element, index) => {
       switch (type) {
         case 'codeRanges':
