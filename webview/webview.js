@@ -1,5 +1,3 @@
-const vscode = acquireVsCodeApi();
-
 class App {
   codeEdits = [];
   operation = '';
@@ -19,15 +17,83 @@ class App {
   startY = 0;
   currentX = 0;
   currentY = 0;
+  toolbar = null;
   selector = null;
   selectables = [];
   selected = new Set();
+
+  initSelectables() {
+    document.body.querySelectorAll('*').forEach(el => {
+      const styles = el.computedStyleMap();
+      const position = styles.get('position').value;
+      if (position === 'static' || position === 'sticky') { return; }
+      const props = {
+        left: styles.get('left'), right: styles.get('right'),
+        top: styles.get('top'), bottom: styles.get('bottom')
+      };
+      // Ignore if both left & right, top & bottom are specified
+      if ((props.left.value !== 'auto' && props.right.value !== 'auto')
+        || (props.top.value !== 'auto' && props.bottom.value !== 'auto')) {
+        return;
+      }
+      // Default to left, top if not specified
+      const propX = props.left.value !== 'auto' ? 'left' : props.right.value !== 'auto' ? 'right' : 'left';
+      const propY = props.top.value !== 'auto' ? 'top' : props.bottom.value !== 'auto' ? 'bottom' : 'top';
+      const x = props[propX];
+      const y = props[propY];
+      // Ignore units except for px
+      if ((x.value !== 'auto' && x.unit !== 'px') || (y.value !== 'auto' && y.unit !== 'px')) {
+        return;
+      }
+      el.classList.add('wve-selectable');
+      el.setAttribute('draggable', 'false');
+      el.dataset.wvePropX = propX;
+      el.dataset.wvePropY = propY;
+      if (x.value !== 'auto') { el.style[propX] = x.toString(); }
+      if (y.value !== 'auto') { el.style[propY] = y.toString(); }
+      this.selectables.push(el);
+    });
+  }
+  initSelector() {
+    this.selector = document.createElement('div');
+    this.selector.id = 'wve-selector';
+    this.selector.style.display = 'none';
+    document.body.appendChild(this.selector);
+  }
+  initToolbar() {
+    this.toolbar = document.createElement('div');
+    this.toolbar.id = 'wve-toolbar';
+    const alignGroup = document.createElement('fieldset');
+    alignGroup.innerHTML = `
+      <button type="button" class="button" id="align-vertical-top">align_vertical_top</button>
+      <button type="button" class="button" id="align-vertical-center">align_vertical_center</button>
+      <button type="button" class="button" id="align-vertical-bottom">align_vertical_bottom</button>
+      <button type="button" class="button" id="align-horizontal-left">align_horizontal_left</button>
+      <button type="button" class="button" id="align-horizontal-center">align_horizontal_center</button>
+      <button type="button" class="button" id="align-horizontal-right">align_horizontal_right</button>
+    `;
+    this.toolbar.appendChild(alignGroup);
+    alignGroup.addEventListener('click', this.onClickAlignButtons);
+    document.body.appendChild(this.toolbar);
+  }
 
   shortName(el) {
     return (
       el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
       + Array.from(el.classList).filter(c => !c.startsWith('wve')).map(c => `.${c}`).join('')
     );
+  }
+  moveElement(el, dx, dy) {
+    if (dx === 0 && dy === 0) { return; }
+    const propX = el.dataset.wvePropX;
+    const propY = el.dataset.wvePropY;
+    const styles = el.computedStyleMap();
+    const valueX = styles.get(propX).value;
+    const valueY = styles.get(propY).value;
+    const x = valueX === 'auto' ? 0 : valueX;
+    const y = valueY === 'auto' ? 0 : valueY;
+    el.style[propX] = x + (propX === 'left' ? dx : -dx) + 'px';
+    el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
   }
   // Emit code edit event to extension
   emitCodeEdits() {
@@ -216,6 +282,7 @@ class App {
   };
 
   onMouseDown = event => {
+    if (this.toolbar.contains(event.target)) { return; }
     this.startX = this.currentX = event.pageX;
     this.startY = this.currentY = event.pageY;
     // Determine whether to select or edit the element based on the click position
@@ -250,17 +317,7 @@ class App {
     this.currentX = event.pageX;
     this.currentY = event.pageY;
     if (this.operation !== 'editing') { return; }
-    this.selected.forEach(el => {
-      const propX = el.dataset.wvePropX;
-      const propY = el.dataset.wvePropY;
-      const styles = el.computedStyleMap();
-      const valueX = styles.get(propX).value;
-      const valueY = styles.get(propY).value;
-      const x = valueX === 'auto' ? 0 : valueX;
-      const y = valueY === 'auto' ? 0 : valueY;
-      el.style[propX] = x + (propX === 'left' ? dx : -dx) + 'px';
-      el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
-    });
+    this.selected.forEach(el => this.moveElement(el, dx, dy));
   };
 
   onMouseUp = event => {
@@ -304,61 +361,11 @@ class App {
     this.operation = '';
     this.emitCodeEdits();
   };
-};
 
-const app = new App();
-
-// Initial display
-document.addEventListener('DOMContentLoaded', async () => {
-  // Remove Visual Studio Code default styles
-  document.getElementById('_defaultStyles')?.remove();
-  // Prepare selectable elements
-  document.body.querySelectorAll('*').forEach(el => {
-    const styles = el.computedStyleMap();
-    const position = styles.get('position').value;
-    if (position === 'static' || position === 'sticky') { return; }
-    const props = {
-      left: styles.get('left'), right: styles.get('right'),
-      top: styles.get('top'), bottom: styles.get('bottom')
-    };
-    // Ignore if both left & right, top & bottom are specified
-    if ((props.left.value !== 'auto' && props.right.value !== 'auto')
-      || (props.top.value !== 'auto' && props.bottom.value !== 'auto')) {
-      return;
-    }
-    // Default to left, top if not specified
-    const propX = props.left.value !== 'auto' ? 'left' : props.right.value !== 'auto' ? 'right' : 'left';
-    const propY = props.top.value !== 'auto' ? 'top' : props.bottom.value !== 'auto' ? 'bottom' : 'top';
-    const x = props[propX];
-    const y = props[propY];
-    // Ignore units except for px
-    if ((x.value !== 'auto' && x.unit !== 'px') || (y.value !== 'auto' && y.unit !== 'px')) {
-      return;
-    }
-    el.classList.add('wve-selectable');
-    el.setAttribute('draggable', 'false');
-    el.dataset.wvePropX = propX;
-    el.dataset.wvePropY = propY;
-    if (x.value !== 'auto') { el.style[propX] = x.toString(); }
-    if (y.value !== 'auto') { el.style[propY] = y.toString(); }
-    app.selectables.push(el);
-  });
-  app.selected = new Set(Array.from(document.body.querySelectorAll('[wve-selected]')));
-  // Add selector
-  app.selector = document.createElement('div');
-  app.selector.id = 'selector';
-  app.selector.style.display = 'none';
-  document.body.appendChild(app.selector);
-  // Click (drag start) event
-  document.addEventListener('mousedown', app.onMouseDown);
-  // Keep update the state of the keyboard being pressed
-  document.addEventListener('keydown', app.onKeyDown);
-  document.addEventListener('keyup', app.onKeyUp);
-  // Copy and cut events
-  function postMessageOnCopyAndCut(event) {
+  onCopyAndCut = event => {
     vscode.postMessage({
       type: event.type,
-      data: Array.from(app.selected).map(el => {
+      data: Array.from(this.selected).map(el => {
         return {
           codeRange: {
             start: +el.dataset.wveCodeStart,
@@ -367,15 +374,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
       })
     });
-  }
-  document.addEventListener('copy', postMessageOnCopyAndCut);
-  document.addEventListener('cut', postMessageOnCopyAndCut);
-  document.addEventListener('paste', event => {
+  };
+  onPaste = event => {
     vscode.postMessage({
       type: 'paste',
       data: event.clipboardData.getData('text')
     });
-  });
+  };
+
+  onClickAlignButtons = event => {
+    if (this.operation !== '' || this.selected.size < 2) { return; }
+    this.beginEdit();
+    const [direction, alignTo] = event.target.id.split('-').slice(1);
+    const selected = Array.from(this.selected);
+    const anchors = selected.map(el => {
+      const rect = el.getBoundingClientRect();
+      if (alignTo === 'center') {
+        if (direction === 'vertical') {
+          return (rect.top + rect.bottom) / 2;
+        } else {
+          return (rect.left + rect.right) / 2;
+        }
+      } else {
+        return rect[alignTo];
+      }
+    });
+    const destination = (alignTo === 'center' ? anchors[0]
+      : Math[{ left: 'min', right: 'max', top: 'min', bottom: 'max' }[alignTo]](...anchors)
+    );
+    selected.forEach((el, index) => {
+      const dx = direction === 'vertical' ? 0 : destination - anchors[index];
+      const dy = direction === 'horizontal' ? 0 : destination - anchors[index];
+      this.moveElement(el, dx, dy);
+    });
+    this.finishEdit();
+    this.emitCodeEdits();
+  };
+};
+
+const vscode = acquireVsCodeApi();
+const app = new App();
+
+// Initial display
+document.addEventListener('DOMContentLoaded', async () => {
+  // Remove Visual Studio Code default styles
+  document.getElementById('_defaultStyles')?.remove();
+  app.initSelectables();
+  app.initSelector();
+  app.initToolbar();
+  document.addEventListener('mousedown', app.onMouseDown);
+  document.addEventListener('keydown', app.onKeyDown);
+  document.addEventListener('keyup', app.onKeyUp);
+  document.addEventListener('copy', app.onCopyAndCut);
+  document.addEventListener('cut', app.onCopyAndCut);
+  document.addEventListener('paste', app.onPaste);
   // Message from extension host
   window.addEventListener('message', ({ data }) => {
     const { type, data: ranges } = data;

@@ -231,8 +231,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
     // Add timestamp to ensure update WebView
     // NOTE WebView has HTML cache, and if the same string is set consecutively,
-    // it will not reflect it even if actual HTML on the WebView and
-    // the HTML being set are different.
+    // it will not reflect it even if actual HTML on the WebView has been updated.
     const timestamp = document.createElement('meta');
     timestamp.setAttribute('name', 'timestamp');
     timestamp.setAttribute('value', (new Date()).toISOString());
