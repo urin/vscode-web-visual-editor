@@ -179,9 +179,22 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     const dom = new JSDOM(code.getText(), { includeNodeLocations: true });
     const document = dom.window.document;
     // Disable scripts in code
-    // NOTE Event scripts specified as element attributes are not disabled,
-    // but for performance reasons, they are not disabled.
     document.querySelectorAll('script').forEach(el => { el.remove(); });
+    document.body.querySelectorAll('*').forEach(el => {
+      // Remove event attributes
+      const nameToRemove = [];
+      for (const attr of el.attributes) {
+        if (attr.name.startsWith('on')) {
+          nameToRemove.push(attr.name);
+        }
+      }
+      nameToRemove.forEach(name => el.removeAttribute(name));
+      // Add source code location information to all elements in body
+      const location = dom.nodeLocation(el);
+      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
+      el.setAttribute('data-wve-code-start', location.startOffset.toString());
+      el.setAttribute('data-wve-code-end', location.endOffset.toString());
+    });
     // Disable links and file selection inputs
     document.querySelectorAll('a[href]').forEach(
       el => el.setAttribute('onclick', 'event.preventDefault(), event.stopPropagation()')
@@ -222,13 +235,6 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       ).toString()
     );
     document.head.appendChild(script);
-    // Add source code location information to all elements in body
-    document.body.querySelectorAll('*').forEach(el => {
-      const location = dom.nodeLocation(el);
-      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
-      el.setAttribute('data-wve-code-start', location.startOffset.toString());
-      el.setAttribute('data-wve-code-end', location.endOffset.toString());
-    });
     // Add timestamp to ensure update WebView
     // NOTE WebView has HTML cache, and if the same string is set consecutively,
     // it will not reflect it even if actual HTML on the WebView has been updated.
