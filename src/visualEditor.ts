@@ -187,14 +187,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       el => el.setAttribute('onclick', 'event.preventDefault(), event.stopPropagation()')
     );
     document.querySelectorAll('input[type=file]').forEach(el => el.setAttribute('disabled', ''));
-    // Replace various URIs (mainly for CSS files) to be handled securely by WebView
+    // Replace URIs (mainly for CSS files) to be handled in sandbox of WebView
     ['href', 'src'].forEach(attr => {
       document.querySelectorAll(`[${attr}]`).forEach(el => {
         if (el.tagName === 'A') { return; }
-        const href = el.getAttribute(attr);
-        if (!href || href.includes('//')) { return; }
+        const uri = el.getAttribute(attr);
+        if (!uri || uri.includes('//')) { return; }
         const safeUri = webview.asWebviewUri(
-          vscode.Uri.file(path.join(path.dirname(code.uri.fsPath), href))
+          vscode.Uri.file(path.join(path.dirname(code.uri.fsPath), uri))
         ).toString();
         el.setAttribute(attr, safeUri);
       });
