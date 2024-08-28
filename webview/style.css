@@ -69,6 +69,15 @@ html {
     font-size: 24px;
     -webkit-font-smoothing: antialiased;
 
+    &:disabled {
+      cursor: not-allowed;
+    }
+
+    &:disabled>.button {
+      color: var(--vscode-disabledForeground);
+      pointer-events: none;
+    }
+
     &>.button {
       appearance: none;
       display: grid;

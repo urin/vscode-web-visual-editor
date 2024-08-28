@@ -18,6 +18,7 @@ class App {
   currentX = 0;
   currentY = 0;
   toolbar = null;
+  toolbarGroupAlign = null;
   selector = null;
   selectables = [];
   selected = new Set();
@@ -63,8 +64,9 @@ class App {
   initToolbar() {
     this.toolbar = document.createElement('div');
     this.toolbar.id = 'wve-toolbar';
-    const alignGroup = document.createElement('fieldset');
-    alignGroup.innerHTML = `
+    this.toolbarGroupAlign = document.createElement('fieldset');
+    this.toolbarGroupAlign.setAttribute('disabled', '');
+    this.toolbarGroupAlign.innerHTML = `
       <button type="button" class="button" id="align-vertical-top">align_vertical_top</button>
       <button type="button" class="button" id="align-vertical-center">align_vertical_center</button>
       <button type="button" class="button" id="align-vertical-bottom">align_vertical_bottom</button>
@@ -72,8 +74,8 @@ class App {
       <button type="button" class="button" id="align-horizontal-center">align_horizontal_center</button>
       <button type="button" class="button" id="align-horizontal-right">align_horizontal_right</button>
     `;
-    this.toolbar.appendChild(alignGroup);
-    alignGroup.addEventListener('click', this.onClickAlignButtons);
+    this.toolbar.appendChild(this.toolbarGroupAlign);
+    this.toolbarGroupAlign.addEventListener('click', this.onClickAlignButtons);
     document.body.appendChild(this.toolbar);
   }
 
@@ -126,6 +128,7 @@ class App {
     }
     this.selected.add(element);
     element.setAttribute('wve-selected', '');
+    if (this.selected.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
   }
   // Deselect element
   deselect(element = null) {
@@ -141,6 +144,7 @@ class App {
     }
     this.selected.delete(element);
     element.removeAttribute('wve-selected');
+    if (this.selected.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
   }
   // Deselect if the element is selected, otherwise select it
   toggleSelection(el) {
