@@ -22,6 +22,7 @@ class App {
   selector = null;
   selectables = [];
   selected = new Set();
+  selectedBeforeEdit = null;
 
   initSelectables() {
     document.body.querySelectorAll('*').forEach(el => {
@@ -165,10 +166,9 @@ class App {
   }
   finishEdit(type) {
     this.selected.forEach(element => {
-      const operation = {
-        type,
-        style: element.getAttribute('style')
-      };
+      const style = element.getAttribute('style');
+      if (style === this.selectedBeforeEdit.get(element).getAttribute('style')) { return; }
+      const operation = { type, style };
       const updated = this.codeEdits.some(edit => {
         if (edit.element === element) {
           edit.operations.push(operation);

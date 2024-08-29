@@ -127,7 +127,11 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       }
       codeEdit.operations.forEach((operation: any) => {
         shouldEdit = true;
-        fragment.setAttribute('style', operation.style);
+        if (operation.style === null) {
+          fragment.removeAttribute('style');
+        } else {
+          fragment.setAttribute('style', operation.style);
+        }
       });
       const { insertSpaces, indentSize } = this.editorOptions;
       const indentLevel = Math.ceil(
