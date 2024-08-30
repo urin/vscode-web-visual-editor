@@ -13,10 +13,20 @@ class App {
     ArrowLeft: false,
     ArrowRight: false
   };
-  startX = 0;
-  startY = 0;
-  currentX = 0;
-  currentY = 0;
+  mouse = {
+    start: {
+      viewportX: 0,
+      viewportY: 0,
+      pageX: 0,
+      pageY: 0
+    },
+    current: {
+      viewportX: 0,
+      viewportY: 0,
+      pageX: 0,
+      pageY: 0
+    }
+  };
   toolbar = null;
   toolbarGroupAlign = null;
   selector = null;
@@ -189,14 +199,14 @@ class App {
     if (this.operation !== 'selecting') { return; }
     requestAnimationFrame(this.drawSelector);
     const [width, height] = [
-      Math.abs(this.currentX - this.startX),
-      Math.abs(this.currentY - this.startY)
+      Math.abs(this.mouse.current.pageX - this.mouse.start.pageX),
+      Math.abs(this.mouse.current.pageY - this.mouse.start.pageY)
     ];
     const selector = this.selector;
     selector.style.width = width + 'px';
     selector.style.height = height + 'px';
-    selector.style.left = Math.min(this.startX, this.currentX) + 'px';
-    selector.style.top = Math.min(this.startY, this.currentY) + 'px';
+    selector.style.left = Math.min(this.mouse.start.pageX, this.mouse.current.pageX) + 'px';
+    selector.style.top = Math.min(this.mouse.start.pageY, this.mouse.current.pageY) + 'px';
     selector.style.display = 'block';
   };
 
@@ -287,14 +297,16 @@ class App {
 
   onMouseDown = event => {
     if (this.toolbar.contains(event.target)) { return; }
-    this.startX = this.currentX = event.pageX;
-    this.startY = this.currentY = event.pageY;
+    this.mouse.start.viewportX = this.mouse.current.viewportX = event.clientX;
+    this.mouse.start.viewportY = this.mouse.current.viewportY = event.clientY;
+    this.mouse.start.pageX = this.mouse.current.pageX = event.pageX;
+    this.mouse.start.pageY = this.mouse.current.pageY = event.pageY;
     // Determine whether to select or edit the element based on the click position
     const atSelected = this.selected.values().some(el => {
       const rect = el.getBoundingClientRect();
       return (
-        rect.left <= this.currentX && this.currentX <= rect.right
-        && rect.top <= this.currentY && this.currentY <= rect.bottom
+        rect.left <= this.mouse.current.viewportX && this.mouse.current.viewportX <= rect.right
+        && rect.top <= this.mouse.current.viewportY && this.mouse.current.viewportY <= rect.bottom
       );
     });
     if (!atSelected || this.keyboard.shiftOrControl) {
@@ -316,10 +328,12 @@ class App {
   };
 
   onMouseMove = event => {
-    const dx = event.pageX - this.currentX;
-    const dy = event.pageY - this.currentY;
-    this.currentX = event.pageX;
-    this.currentY = event.pageY;
+    const dx = event.clientX - this.mouse.current.viewportX;
+    const dy = event.clientY - this.mouse.current.viewportY;
+    this.mouse.current.viewportX = event.clientX;
+    this.mouse.current.viewportY = event.clientY;
+    this.mouse.current.pageX = event.pageX;
+    this.mouse.current.pageY = event.pageY;
     if (this.operation !== 'editing') { return; }
     this.selected.forEach(el => this.moveElement(el, dx, dy));
   };
@@ -358,7 +372,8 @@ class App {
       }
       this.selector.style.display = 'none';
     } else {
-      if (this.startX !== this.currentX || this.startY !== this.currentY) {
+      if (this.mouse.start.viewportX !== this.mouse.current.viewportX
+        || this.mouse.start.viewportY !== this.mouse.current.viewportY) {
         this.finishEdit('move');
       }
     }
