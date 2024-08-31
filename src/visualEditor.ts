@@ -219,7 +219,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // Incorporate CSS files into layer and lower their priority
     const style = document.createElement('style');
     document.querySelectorAll('link[href][rel=stylesheet]').forEach(el => {
-      style.append(`@import url('${el.getAttribute('href')}') layer(base);\n`);
+      style.append(`@import url('${el.getAttribute('href')}') layer(user-style);\n`);
       el.remove();
     });
     document.head.appendChild(style);
