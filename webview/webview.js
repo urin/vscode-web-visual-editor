@@ -30,6 +30,8 @@ class App {
   toolbar = null;
   toolbarGroupAlign = null;
   toolbarZoomValue = null;
+  toolbarZoomIn = null;
+  toolbarZoomOut = null;
   zoom = '1';
   selector = null;
   selectables = [];
@@ -79,13 +81,16 @@ class App {
     this.toolbar.id = 'wve-toolbar';
 
     const groupZoom = document.createElement('fieldset');
-    groupZoom.innerHTML += `
+    groupZoom.innerHTML = `
       <button type="button" class="wve-button" id="zoom-in">zoom_in</button>
       <span id="zoom-value">100%</span>
       <button type="button" class="wve-button" id="zoom-out">zoom_out</button>
     `;
-    groupZoom.addEventListener('click', this.onClickGroupZoom);
     this.toolbarZoomValue = groupZoom.querySelector('#zoom-value');
+    this.toolbarZoomIn = groupZoom.querySelector('#zoom-in');
+    this.toolbarZoomIn.addEventListener('click', event => { this.updateZoom(1); });
+    this.toolbarZoomOut = groupZoom.querySelector('#zoom-out');
+    this.toolbarZoomOut.addEventListener('click', event => { this.updateZoom(-1); });
     this.toolbar.appendChild(groupZoom);
 
     this.toolbarGroupAlign = document.createElement('fieldset');
@@ -423,34 +428,31 @@ class App {
     });
   };
 
-  updateZoom(value = null) {
-    if (!value) {
-      value = sessionStorage.getItem('zoom');
-      if (!value) { return; }
+  updateZoom(sign) {
+    const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
+    if (sign) {
+      this.zoom = steps[steps.indexOf(this.zoom) + sign];
+    } else {
+      let value = sessionStorage.getItem('zoom');
+      if (!value) { value = '1'; }
+      this.zoom = value;
     }
-    this.zoom = value;
     sessionStorage.setItem('zoom', this.zoom);
     document.documentElement.style.setProperty('--wve-zoom', this.zoom);
     this.toolbarZoomValue.textContent = (
       this.zoom.replace(/^0/, ' ').replace('.', '').padEnd(3, '0') + '%'
     );
-  }
-  onClickGroupZoom = event => {
-    const sign = event.target.id;
-    if (sign !== 'zoom-in' && sign !== 'zoom-out') { return; }
-    const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
-    const newIndex = steps.indexOf(
-      getComputedStyle(document.documentElement).getPropertyValue('--wve-zoom').trim()
-    ) + (sign === 'zoom-in' ? 1 : -1);
-    this.updateZoom(steps[newIndex]);
-    if (newIndex === 0 || newIndex === steps.length - 1) {
-      event.target.setAttribute('disabled', '');
+    const stepIndex = steps.indexOf(this.zoom);
+    if (stepIndex < 0) { return; }
+    if (stepIndex === 0) {
+      this.toolbarZoomOut.setAttribute('disabled', '');
+    } else if (stepIndex === steps.length - 1) {
+      this.toolbarZoomIn.setAttribute('disabled', '');
     } else {
-      for (const el of event.target.parentElement.children) {
-        el.removeAttribute('disabled');
-      }
+      this.toolbarZoomIn.removeAttribute('disabled');
+      this.toolbarZoomOut.removeAttribute('disabled');
     }
-  };
+  }
 
   onClickGroupAlign = event => {
     if (this.operation !== '' || this.selected.size < 2) { return; }
