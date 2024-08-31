@@ -29,6 +29,8 @@ class App {
   };
   toolbar = null;
   toolbarGroupAlign = null;
+  toolbarZoomValue = null;
+  zoom = '1';
   selector = null;
   selectables = [];
   selected = new Set();
@@ -75,6 +77,17 @@ class App {
   initToolbar() {
     this.toolbar = document.createElement('div');
     this.toolbar.id = 'wve-toolbar';
+
+    const groupZoom = document.createElement('fieldset');
+    groupZoom.innerHTML += `
+      <button type="button" class="wve-button" id="zoom-in">zoom_in</button>
+      <span id="zoom-value">100%</span>
+      <button type="button" class="wve-button" id="zoom-out">zoom_out</button>
+    `;
+    groupZoom.addEventListener('click', this.onClickGroupZoom);
+    this.toolbarZoomValue = groupZoom.querySelector('#zoom-value');
+    this.toolbar.appendChild(groupZoom);
+
     this.toolbarGroupAlign = document.createElement('fieldset');
     this.toolbarGroupAlign.setAttribute('disabled', '');
     this.toolbarGroupAlign.innerHTML = `
@@ -85,15 +98,22 @@ class App {
       <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
       <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
     `;
+    this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
     this.toolbar.appendChild(this.toolbarGroupAlign);
-    this.toolbarGroupAlign.addEventListener('click', this.onClickAlignButtons);
     document.body.appendChild(this.toolbar);
   }
 
-  shortName(el) {
+  shortNameOf(el) {
     return (
       el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
       + Array.from(el.classList).filter(c => !c.startsWith('wve')).map(c => `.${c}`).join('')
+    );
+  }
+  realPositionOf(event) {
+    return Object.fromEntries(
+      ['clientX', 'clientY', 'pageX', 'pageY'].map(
+        key => [key, event[key] / +this.zoom]
+      )
     );
   }
   moveElement(el, dx, dy) {
@@ -114,7 +134,7 @@ class App {
     const data = this.codeEdits.map(edit => {
       const element = edit.element;
       return {
-        element: this.shortName(element),
+        element: this.shortNameOf(element),
         codeRange: {
           start: +element.dataset.wveCodeStart,
           end: +element.dataset.wveCodeEnd
@@ -297,10 +317,11 @@ class App {
 
   onMouseDown = event => {
     if (this.toolbar.contains(event.target)) { return; }
-    this.mouse.start.viewportX = this.mouse.current.viewportX = event.clientX;
-    this.mouse.start.viewportY = this.mouse.current.viewportY = event.clientY;
-    this.mouse.start.pageX = this.mouse.current.pageX = event.pageX;
-    this.mouse.start.pageY = this.mouse.current.pageY = event.pageY;
+    const pos = this.realPositionOf(event);
+    this.mouse.start.viewportX = this.mouse.current.viewportX = pos.clientX;
+    this.mouse.start.viewportY = this.mouse.current.viewportY = pos.clientY;
+    this.mouse.start.pageX = this.mouse.current.pageX = pos.pageX;
+    this.mouse.start.pageY = this.mouse.current.pageY = pos.pageY;
     // Determine whether to select or edit the element based on the click position
     const atSelected = this.selected.values().some(el => {
       const rect = el.getBoundingClientRect();
@@ -328,12 +349,13 @@ class App {
   };
 
   onMouseMove = event => {
-    const dx = event.clientX - this.mouse.current.viewportX;
-    const dy = event.clientY - this.mouse.current.viewportY;
-    this.mouse.current.viewportX = event.clientX;
-    this.mouse.current.viewportY = event.clientY;
-    this.mouse.current.pageX = event.pageX;
-    this.mouse.current.pageY = event.pageY;
+    const pos = this.realPositionOf(event);
+    const dx = pos.clientX - this.mouse.current.viewportX;
+    const dy = pos.clientY - this.mouse.current.viewportY;
+    this.mouse.current.viewportX += dx;
+    this.mouse.current.viewportY += dy;
+    this.mouse.current.pageX = pos.pageX;
+    this.mouse.current.pageY = pos.pageY;
     if (this.operation !== 'editing') { return; }
     this.selected.forEach(el => this.moveElement(el, dx, dy));
   };
@@ -401,7 +423,36 @@ class App {
     });
   };
 
-  onClickAlignButtons = event => {
+  updateZoom(value = null) {
+    if (!value) {
+      value = sessionStorage.getItem('zoom');
+      if (!value) { return; }
+    }
+    this.zoom = value;
+    sessionStorage.setItem('zoom', this.zoom);
+    document.documentElement.style.setProperty('--wve-zoom', this.zoom);
+    this.toolbarZoomValue.textContent = (
+      this.zoom.replace(/^0/, ' ').replace('.', '').padEnd(3, '0') + '%'
+    );
+  }
+  onClickGroupZoom = event => {
+    const sign = event.target.id;
+    if (sign !== 'zoom-in' && sign !== 'zoom-out') { return; }
+    const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
+    const newIndex = steps.indexOf(
+      getComputedStyle(document.documentElement).getPropertyValue('--wve-zoom').trim()
+    ) + (sign === 'zoom-in' ? 1 : -1);
+    this.updateZoom(steps[newIndex]);
+    if (newIndex === 0 || newIndex === steps.length - 1) {
+      event.target.setAttribute('disabled', '');
+    } else {
+      for (const el of event.target.parentElement.children) {
+        el.removeAttribute('disabled');
+      }
+    }
+  };
+
+  onClickGroupAlign = event => {
     if (this.operation !== '' || this.selected.size < 2) { return; }
     this.beginEdit();
     const [direction, alignTo] = event.target.id.split('-').slice(1);
@@ -441,6 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   app.initSelectables();
   app.initSelector();
   app.initToolbar();
+  app.updateZoom();
   document.addEventListener('mousedown', app.onMouseDown);
   document.addEventListener('keydown', app.onKeyDown);
   document.addEventListener('keyup', app.onKeyUp);

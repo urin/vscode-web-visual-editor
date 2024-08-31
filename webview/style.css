@@ -2,6 +2,7 @@
 
 :root {
   --wve-toolbar-width: 40px;
+  --wve-zoom: 1;
 }
 
 /* Styles that overrides user-style */
@@ -15,7 +16,12 @@
 
 html {
   overflow: auto;
-  margin: 0 0 0 var(--wve-toolbar-width);
+  margin: 0;
+}
+
+body {
+  zoom: var(--wve-zoom);
+  margin: 0 0 0 calc(var(--wve-toolbar-width) / var(--wve-zoom));
 }
 
 .wve-selectable:hover {
@@ -69,6 +75,7 @@ html {
   padding: 0;
   width: var(--wve-toolbar-width);
   height: 100dvh;
+  zoom: calc(1 / var(--wve-zoom));
   color: var(--vscode-foreground);
   background-color: var(--vscode-editor-background);
   box-shadow: 0 0 1px 1px currentColor;
