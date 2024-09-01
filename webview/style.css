@@ -76,7 +76,7 @@ body {
   width: var(--wve-toolbar-width);
   height: 100dvh;
   zoom: calc(1 / var(--wve-zoom));
-  color: var(--vscode-foreground);
+  color: var(--vscode-descriptionForeground);
   background-color: var(--vscode-editor-background);
   box-shadow: 0 0 1px 1px currentColor;
   /* for icons (inherited to descendant) */
@@ -96,6 +96,7 @@ body {
     opacity: 0.5;
     font-size: 24px;
     font-family: 'WVE Icons';
+    color: var(--vscode-foreground);
 
     &:disabled,
     :disabled & {
@@ -126,10 +127,6 @@ body {
     &:not(:first-child) {
       border-top: 1px solid rgb(128 128 128 / 0.2);
     }
-  }
-
-  #zoom-value {
-    color: var(--vscode-descriptionForeground);
   }
 }
 

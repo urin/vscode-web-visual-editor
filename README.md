@@ -4,12 +4,15 @@ Edit HTML files visually in real-time.
 ## ✨ Features
 - 🖼️ **Visual Editing**: Edit HTML elements visually within the WebView.
 - ⏱️ **Real-Time Preview**: See changes reflected instantly as you edit.
+- 🪟 **Integrated with Visual Studio Code**: No additional windows.
 
 ### 📋 Functions
 - 🔒 **Script and Link Management**: Disable scripts and manage links for security.
 - 🖱️ **Element Selection**: Select and manipulate HTML elements with ease.
+- ↕ **Move Elements**: Drag elements to rearrange their position.
+- ↹ **Align Elements**: Easy to align elements.
 - ✂️ **Copy and Cut elements**: Copy or cut elements and their attributes.
-- ↕ **Move Elements**: Drag and drop elements to rearrange their position.
+- 🔍 **Zoom in and out**: Zoom in and out the page.
 
 ## 📜 License
 [MIT License](LICENSE)

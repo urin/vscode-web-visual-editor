@@ -2,16 +2,8 @@ class App {
   codeEdits = [];
   operation = '';
   keyboard = {
-    // Combined state
     shiftOrCtrl: false,
     arrow: false,
-    // Each key
-    Shift: false,
-    Control: false,
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false
   };
   mouse = {
     start: {
@@ -28,10 +20,6 @@ class App {
     }
   };
   toolbar = null;
-  toolbarGroupAlign = null;
-  toolbarZoomValue = null;
-  toolbarZoomIn = null;
-  toolbarZoomOut = null;
   zoom = '1';
   selector = null;
   selectables = [];
@@ -77,35 +65,38 @@ class App {
     document.body.appendChild(this.selector);
   }
   initToolbar() {
+    const fragment = new DocumentFragment();
     this.toolbar = document.createElement('div');
     this.toolbar.id = 'wve-toolbar';
-
-    const groupZoom = document.createElement('fieldset');
-    groupZoom.innerHTML = `
-      <button type="button" class="wve-button" id="zoom-in">zoom_in</button>
-      <span id="zoom-value">100%</span>
-      <button type="button" class="wve-button" id="zoom-out">zoom_out</button>
+    fragment.appendChild(this.toolbar);
+    const controls = {
+      toolbarZoomValue: 'wve-zoom-value',
+      toolbarZoomIn: 'wve-zoom-in',
+      toolbarZoomOut: 'wve-zoom-out',
+      toolbarGroupAlign: 'wve-group-align',
+    };
+    this.toolbar.innerHTML = `
+      <fieldset>
+        <button id="${controls.toolbarZoomIn}" type="button" class="wve-button">zoom_in</button>
+        <span id="${controls.toolbarZoomValue}">100%</span>
+        <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
+      </fieldset>
+      <fieldset id="${controls.toolbarGroupAlign}" disabled>
+        <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
+        <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
+        <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
+        <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
+        <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
+        <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
+      </fieldset>
     `;
-    this.toolbarZoomValue = groupZoom.querySelector('#zoom-value');
-    this.toolbarZoomIn = groupZoom.querySelector('#zoom-in');
+    Object.entries(controls).forEach(([key, id]) => {
+      this[key] = fragment.getElementById(id);
+    });
     this.toolbarZoomIn.addEventListener('click', event => { this.updateZoom(1); });
-    this.toolbarZoomOut = groupZoom.querySelector('#zoom-out');
     this.toolbarZoomOut.addEventListener('click', event => { this.updateZoom(-1); });
-    this.toolbar.appendChild(groupZoom);
-
-    this.toolbarGroupAlign = document.createElement('fieldset');
-    this.toolbarGroupAlign.setAttribute('disabled', '');
-    this.toolbarGroupAlign.innerHTML = `
-      <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
-      <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
-      <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
-      <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
-      <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
-      <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
-    `;
     this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
-    this.toolbar.appendChild(this.toolbarGroupAlign);
-    document.body.appendChild(this.toolbar);
+    document.body.appendChild(fragment);
   }
 
   shortNameOf(el) {
@@ -433,9 +424,7 @@ class App {
     if (sign) {
       this.zoom = steps[steps.indexOf(this.zoom) + sign];
     } else {
-      let value = sessionStorage.getItem('zoom');
-      if (!value) { value = '1'; }
-      this.zoom = value;
+      this.zoom = sessionStorage.getItem('zoom') || '1';
     }
     sessionStorage.setItem('zoom', this.zoom);
     document.documentElement.style.setProperty('--wve-zoom', this.zoom);
