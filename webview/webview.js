@@ -268,6 +268,7 @@ class App {
       if (this.selected.size > 0 && !prev.arrow) {
         this.beginEdit();
       }
+      event.preventDefault();
       if (kbd.ArrowUp || kbd.ArrowDown) {
         this.selected.forEach(el => {
           const propY = el.dataset.wvePropY;
