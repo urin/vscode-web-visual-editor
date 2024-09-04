@@ -12,6 +12,7 @@
   user-select: none;
   outline: none;
   cursor: default;
+  pointer-events: auto;
 }
 
 html {
@@ -20,8 +21,10 @@ html {
 }
 
 body {
+  overflow: auto;
   zoom: var(--wve-zoom);
   margin: 0 0 0 calc(var(--wve-toolbar-width) / var(--wve-zoom));
+  transform: none;
 }
 
 .wve-selectable:hover {

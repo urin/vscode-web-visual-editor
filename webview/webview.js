@@ -10,13 +10,13 @@ class App {
       viewportX: 0,
       viewportY: 0,
       pageX: 0,
-      pageY: 0
+      pageY: 0,
     },
     current: {
       viewportX: 0,
       viewportY: 0,
       pageX: 0,
-      pageY: 0
+      pageY: 0,
     }
   };
   toolbar = null;
@@ -241,13 +241,12 @@ class App {
   }
   updateKeyboardCombinedState() {
     const kbd = this.keyboard;
-    const prev = { ...kbd };
     kbd.shiftOrControl = kbd.Shift || kbd.Control;
-    kbd.arrow = ((kbd.ArrowUp || kbd.ArrowDown) && !(kbd.ArrowUp && kbd.ArrowDown))
-      || ((kbd.ArrowLeft || kbd.ArrowRight) && !(kbd.ArrowLeft && kbd.ArrowRight));
-    return prev;
+    kbd.arrow = kbd.ArrowUp !== kbd.ArrowDown || kbd.ArrowLeft !== kbd.ArrowRight;
   }
   onKeyDown = event => {
+    const kbd = this.keyboard;
+    const prev = { ...kbd };
     switch (event.key) {
       case 'Escape':
         this.deselect();
@@ -262,10 +261,9 @@ class App {
         this.setStateKeyboardPress(event.key);
         break;
     }
-    const prev = this.updateKeyboardCombinedState();
+    this.updateKeyboardCombinedState();
 
     if (this.operation === '') {
-      const kbd = this.keyboard;
       if (!kbd.arrow) { return; }
       if (this.selected.size > 0 && !prev.arrow) {
         this.beginEdit();
@@ -294,6 +292,8 @@ class App {
   };
 
   onKeyUp = event => {
+    const kbd = this.keyboard;
+    const prev = { ...kbd };
     switch (event.key) {
       case 'Shift':
       case 'Control':
@@ -304,7 +304,7 @@ class App {
         this.setStateKeyboardRelease(event.key);
         break;
     }
-    const prev = this.updateKeyboardCombinedState();
+    this.updateKeyboardCombinedState();
     if (prev.arrow && !this.keyboard.arrow) {
       this.finishEdit('move');
       this.emitCodeEdits();
