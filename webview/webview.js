@@ -331,7 +331,7 @@ class App {
       this.operation = 'selecting';
       this.selector.style.display = 'block';
     } else if (atSelected) {
-      this.operation = 'editing';
+      this.operation = 'moving';
       this.beginEdit();
     } else {
       this.operation = '';
@@ -353,8 +353,26 @@ class App {
     this.mouse.current.viewportY += dy;
     this.mouse.current.pageX = pos.pageX;
     this.mouse.current.pageY = pos.pageY;
-    if (this.operation !== 'editing') { return; }
-    this.selected.forEach(el => this.moveElement(el, dx, dy));
+    if (this.operation !== 'moving') { return; }
+    if (this.keyboard.Shift) {
+      const absDx = Math.abs(pos.clientX - this.mouse.start.viewportX);
+      const absDy = Math.abs(pos.clientY - this.mouse.start.viewportY);
+      if (absDx > absDy) {
+        this.selected.forEach(el => {
+          const propY = el.dataset.wvePropY;
+          el.style[propY] = this.selectedBeforeEdit.get(el).style[propY];
+          this.moveElement(el, dx, 0);
+        });
+      } else {
+        this.selected.forEach(el => {
+          const propX = el.dataset.wvePropX;
+          el.style[propX] = this.selectedBeforeEdit.get(el).style[propX];
+          this.moveElement(el, 0, dy);
+        });
+      }
+    } else {
+      this.selected.forEach(el => this.moveElement(el, dx, dy));
+    }
   };
 
   onMouseUp = event => {
