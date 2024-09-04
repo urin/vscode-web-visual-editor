@@ -113,16 +113,22 @@ class App {
     );
   }
   moveElement(el, dx, dy) {
+    dx = Math.trunc(dx);
+    dy = Math.trunc(dy);
     if (dx === 0 && dy === 0) { return; }
-    const propX = el.dataset.wvePropX;
-    const propY = el.dataset.wvePropY;
     const styles = el.computedStyleMap();
-    const valueX = styles.get(propX).value;
-    const valueY = styles.get(propY).value;
-    const x = valueX === 'auto' ? 0 : valueX;
-    const y = valueY === 'auto' ? 0 : valueY;
-    el.style[propX] = x + (propX === 'left' ? dx : -dx) + 'px';
-    el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
+    if (dx !== 0) {
+      const propX = el.dataset.wvePropX;
+      const valueX = styles.get(propX).value;
+      const x = valueX === 'auto' ? 0 : valueX;
+      el.style[propX] = x + (propX === 'left' ? dx : -dx) + 'px';
+    }
+    if (dy !== 0) {
+      const propY = el.dataset.wvePropY;
+      const valueY = styles.get(propY).value;
+      const y = valueY === 'auto' ? 0 : valueY;
+      el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
+    }
   }
   // Emit code edit event to extension
   emitCodeEdits() {
@@ -271,10 +277,7 @@ class App {
             ((propY === 'top' && kbd.ArrowDown) ||
               (propY === 'bottom' && kbd.ArrowUp)) ? 1 : -1
           );
-          const styles = el.computedStyleMap();
-          const value = styles.get(propY).value;
-          const y = value === 'auto' ? 0 : value;
-          el.style[propY] = y + dy + 'px';
+          this.moveElement(el, 0, dy);
         });
       }
       if (kbd.ArrowLeft || kbd.ArrowRight) {
@@ -284,10 +287,7 @@ class App {
             ((propX === 'left' && kbd.ArrowRight) ||
               (propX === 'right' && kbd.ArrowLeft)) ? 1 : -1
           );
-          const styles = el.computedStyleMap();
-          const value = styles.get(propX).value;
-          const x = value === 'auto' ? 0 : value;
-          el.style[propX] = x + dx + 'px';
+          this.moveElement(el, dx, 0);
         });
       }
     }
