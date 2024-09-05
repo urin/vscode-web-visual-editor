@@ -21,6 +21,7 @@ class App {
   };
   toolbar = null;
   zoom = '1';
+  linkCode = false;
   selector = null;
   selectables = [];
   selected = new Set();
@@ -74,12 +75,17 @@ class App {
       toolbarZoomIn: 'wve-zoom-in',
       toolbarZoomOut: 'wve-zoom-out',
       toolbarGroupAlign: 'wve-group-align',
+      toolbarLinkCode: 'wve-link-code',
     };
     this.toolbar.innerHTML = `
       <fieldset>
         <button id="${controls.toolbarZoomIn}" type="button" class="wve-button">zoom_in</button>
         <span id="${controls.toolbarZoomValue}">100%</span>
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
+        <label class="wve-button">
+          dataset_linked
+          <input id="${controls.toolbarLinkCode}" type="checkbox">
+        </label>
       </fieldset>
       <fieldset id="${controls.toolbarGroupAlign}" disabled>
         <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
@@ -96,6 +102,9 @@ class App {
     this.toolbarZoomIn.addEventListener('click', event => { this.updateZoom(1); });
     this.toolbarZoomOut.addEventListener('click', event => { this.updateZoom(-1); });
     this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
+    this.toolbarLinkCode.addEventListener('change', event => {
+      this.linkCode = event.target.checked;
+    });
     document.body.appendChild(fragment);
   }
 
@@ -162,6 +171,14 @@ class App {
     this.selected.add(element);
     element.setAttribute('wve-selected', '');
     if (this.selected.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
+    if (this.linkCode) {
+      vscode.postMessage({
+        type: 'select', data: {
+          start: element.dataset.wveCodeStart,
+          end: element.dataset.wveCodeEnd
+        }
+      });
+    }
   }
   // Deselect element
   deselect(element = null) {

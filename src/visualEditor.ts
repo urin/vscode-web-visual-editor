@@ -89,22 +89,37 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // Message from WebView
     panel.webview.onDidReceiveMessage(event => {
       switch (event.type) {
+        case 'select':
+          this.selectElement(code, event);
+          break;
         case 'edit':
           if (this.editElements(code, event)) {
             this.editedBy.add(panel);
           }
-          return;
+          break;
         case 'copy':
         case 'cut':
           this.copyOrCutElements(code, event);
-          return;
+          break;
         case 'paste':
           this.pasteElements(code, event);
-          return;
+          break;
       }
     });
     // Update webview
     this.updateWebview(panel.webview, code);
+  }
+
+  // Select code range of selected element
+  private selectElement(code: vscode.TextDocument, event: any) {
+    const { start, end } = event.data;
+    vscode.window.visibleTextEditors.forEach(editor => {
+      if (editor.document !== code) { return; }
+      const selection = editor.selection = new vscode.Selection(
+        code.positionAt(start), code.positionAt(end)
+      );
+      editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
+    });
   }
 
   // Reflect edits on WebView to source code
