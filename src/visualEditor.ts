@@ -97,9 +97,16 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
             this.editedBy.add(panel);
           }
           break;
+        case 'delete':
+          this.deleteElements(code, this.getNiceRanges(code, event.data));
+          break;
         case 'copy':
+          this.copyElements(code, this.getNiceRanges(code, event.data));
+          break;
         case 'cut':
-          this.copyOrCutElements(code, event);
+          const niceRanges = this.getNiceRanges(code, event.data);
+          this.copyElements(code, niceRanges);
+          this.deleteElements(code, niceRanges);
           break;
         case 'paste':
           this.pasteElements(code, event);
@@ -113,11 +120,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   // Select code range of selected element
   private selectElement(code: vscode.TextDocument, event: any) {
     const { start, end } = event.data;
+    const selection = new vscode.Selection(
+      code.positionAt(start), code.positionAt(end)
+    );
     vscode.window.visibleTextEditors.forEach(editor => {
       if (editor.document !== code) { return; }
-      const selection = editor.selection = new vscode.Selection(
-        code.positionAt(start), code.positionAt(end)
-      );
+      editor.selection = selection;
       editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
     });
   }
@@ -162,31 +170,35 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     return shouldEdit;
   }
 
-  // Copy or Cut process on WebView
-  private copyOrCutElements(code: vscode.TextDocument, event: any) {
-    const ranges = event.data.map((operation: any) => {
-      let start = code.positionAt(operation.codeRange.start);
+  private getNiceRanges(code: vscode.TextDocument, ranges: any) {
+    return ranges.map((range: any) => {
+      let start = code.positionAt(range.codeRange.start);
       const lineStart = code.lineAt(start.line);
       if (start.character === lineStart.firstNonWhitespaceCharacterIndex) {
         start = lineStart.range.start;
       }
-      let end = code.positionAt(operation.codeRange.end);
+      let end = code.positionAt(range.codeRange.end);
       const lineEnd = code.lineAt(end.line);
       if (end.isEqual(lineEnd.range.end)) {
         end = lineEnd.rangeIncludingLineBreak.end;
       }
       return new vscode.Range(start, end);
     });
+  }
+
+  private deleteElements(code: vscode.TextDocument, ranges: vscode.Range[]) {
+    const edit = new vscode.WorkspaceEdit();
+    ranges.forEach((range: vscode.Range) => edit.delete(code.uri, range));
+    vscode.workspace.applyEdit(edit);
+  }
+
+  // Copy process on WebView
+  private copyElements(code: vscode.TextDocument, ranges: vscode.Range[]) {
     vscode.env.clipboard.writeText(
       this.formatHtml(
         ranges.map((range: vscode.Range) => code.getText(range)).join('\n')
       ) + '\n'
     );
-    if (event.type === 'cut') {
-      const edit = new vscode.WorkspaceEdit();
-      ranges.forEach((range: vscode.Range) => edit.delete(code.uri, range));
-      vscode.workspace.applyEdit(edit);
-    }
   }
 
   // TODO Paste process on WebView

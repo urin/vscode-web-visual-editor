@@ -327,6 +327,19 @@ class App {
       this.finishEdit('move');
       this.emitCodeEdits();
     }
+    if (event.key === 'Delete' && this.selected.length > 0) {
+      vscode.postMessage({
+        type: 'delete',
+        data: Array.from(this.selected).map(el => {
+          return {
+            codeRange: {
+              start: +el.dataset.wveCodeStart,
+              end: +el.dataset.wveCodeEnd
+            }
+          };
+        })
+      });
+    }
   };
 
   onMouseDown = event => {
