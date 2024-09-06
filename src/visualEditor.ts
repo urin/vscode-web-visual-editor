@@ -90,7 +90,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel.webview.onDidReceiveMessage(event => {
       switch (event.type) {
         case 'select':
-          this.selectElement(code, event);
+          this.selectElements(code, event);
           break;
         case 'edit':
           if (this.editElements(code, event)) {
@@ -118,15 +118,16 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   // Select code range of selected element
-  private selectElement(code: vscode.TextDocument, event: any) {
-    const { start, end } = event.data;
-    const selection = new vscode.Selection(
-      code.positionAt(start), code.positionAt(end)
-    );
+  private selectElements(code: vscode.TextDocument, event: any) {
+    const selections = this.getNiceRanges(code, event.data).map(range => {
+      return new vscode.Selection(range.start, range.end);
+    });
     vscode.window.visibleTextEditors.forEach(editor => {
       if (editor.document !== code) { return; }
-      editor.selection = selection;
-      editor.revealRange(selection, vscode.TextEditorRevealType.InCenter);
+      editor.selections = selections;
+      if (selections.length > 0) {
+        editor.revealRange(selections.at(-1)!, vscode.TextEditorRevealType.InCenter);
+      }
     });
   }
 
@@ -170,7 +171,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     return shouldEdit;
   }
 
-  private getNiceRanges(code: vscode.TextDocument, ranges: any) {
+  private getNiceRanges(code: vscode.TextDocument, ranges: any): vscode.Range[] {
     return ranges.map((range: any) => {
       let start = code.positionAt(range.codeRange.start);
       const lineStart = code.lineAt(start.line);

@@ -157,6 +157,23 @@ class App {
     this.codeEdits = [];
     this.selectedBeforeEdit.clear();
   }
+
+  emitSelectionChange() {
+    if (this.linkCode) {
+      vscode.postMessage({
+        type: 'select',
+        data: Array.from(this.selected).map(el => {
+          return {
+            codeRange: {
+              start: el.dataset.wveCodeStart,
+              end: el.dataset.wveCodeEnd
+            }
+          };
+        })
+      });
+    }
+  }
+
   // Select element
   select(element) {
     if (this.selected.has(element)) { return; }
@@ -171,14 +188,7 @@ class App {
     this.selected.add(element);
     element.setAttribute('wve-selected', '');
     if (this.selected.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
-    if (this.linkCode) {
-      vscode.postMessage({
-        type: 'select', data: {
-          start: element.dataset.wveCodeStart,
-          end: element.dataset.wveCodeEnd
-        }
-      });
-    }
+    this.emitSelectionChange();
   }
   // Deselect element
   deselect(element = null) {
@@ -195,6 +205,7 @@ class App {
     this.selected.delete(element);
     element.removeAttribute('wve-selected');
     if (this.selected.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
+    this.emitSelectionChange();
   }
   // Deselect if the element is selected, otherwise select it
   toggleSelection(el) {
