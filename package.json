@@ -36,10 +36,12 @@
     "lint": "eslint src --ext ts"
   },
   "dependencies": {
+    "he": "^1.2.0",
     "js-beautify": "^1.15.1",
     "jsdom": "^24.1.1"
   },
   "devDependencies": {
+    "@types/he": "^1.2.3",
     "@types/js-beautify": "^1.14.3",
     "@types/jsdom": "^21.1.7",
     "@types/mocha": "^10.0.7",

@@ -113,7 +113,7 @@ class App {
   shortNameOf(el) {
     return (
       el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-      + Array.from(el.classList).filter(c => !c.startsWith('wve')).map(c => `.${c}`).join('')
+      + Array.from(el.classList).map(c => `.${c}`).join('')
     );
   }
   realPositionOf(event) {
@@ -450,9 +450,15 @@ class App {
     });
   };
   onPaste = event => {
+    const dest = Array.from(this.selected).at(-1) ?? document.body;
     vscode.postMessage({
       type: 'paste',
-      data: event.clipboardData.getData('text')
+      data: {
+        codeRange: {
+          start: +dest.dataset.wveCodeStart,
+          end: +dest.dataset.wveCodeEnd
+        }
+      }
     });
   };
 
