@@ -22,13 +22,15 @@ class App {
   toolbar = null;
   zoom = '1';
   linkCode = false;
+  userElements = Array.from(document.body.querySelectorAll('*'));
   selector = null;
-  selectables = [];
+  movables = [];
   selected = new Set();
-  selectedBeforeEdit = null;
+  movers = new Set();
+  moversBeforeEdit = null;
 
-  initSelectables() {
-    document.body.querySelectorAll('*').forEach(el => {
+  initMovables() {
+    this.userElements.forEach(el => {
       const styles = el.computedStyleMap();
       const position = styles.get('position').value;
       if (position === 'static' || position === 'sticky') { return; }
@@ -50,13 +52,13 @@ class App {
       if ((x.value !== 'auto' && x.unit !== 'px') || (y.value !== 'auto' && y.unit !== 'px')) {
         return;
       }
-      el.classList.add('wve-selectable');
+      el.setAttribute('wve-movable', '');
       el.setAttribute('draggable', 'false');
       el.dataset.wvePropX = propX;
       el.dataset.wvePropY = propY;
       if (x.value !== 'auto') { el.style[propX] = x.toString(); }
       if (y.value !== 'auto') { el.style[propY] = y.toString(); }
-      this.selectables.push(el);
+      this.movables.push(el);
     });
   }
   initSelector() {
@@ -123,6 +125,8 @@ class App {
   }
   moveElement(el, dx, dy) {
     if (dx === 0 && dy === 0) { return; }
+    dx = Math.trunc(dx);
+    dy = Math.trunc(dy);
     const styles = el.computedStyleMap();
     if (dx !== 0) {
       const propX = el.dataset.wvePropX;
@@ -153,7 +157,7 @@ class App {
     });
     vscode.postMessage({ type: 'edit', data });
     this.codeEdits = [];
-    this.selectedBeforeEdit.clear();
+    this.moversBeforeEdit.clear();
   }
 
   emitSelectionChange() {
@@ -185,13 +189,16 @@ class App {
     }
     this.selected.add(element);
     element.setAttribute('wve-selected', '');
-    if (this.selected.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
+    if (element.hasAttribute('wve-movable')) {
+      this.movers.add(element);
+    }
+    if (this.movers.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
     this.emitSelectionChange();
   }
   // Deselect element
   deselect(element = null) {
     if (!element) {
-      document.body.querySelectorAll('[wve-selected]').forEach(el => { this.deselect(el); });
+      this.selected.values().forEach(el => { this.deselect(el); });
       return;
     }
     if (!this.selected.has(element)) { return; }
@@ -202,7 +209,8 @@ class App {
     }
     this.selected.delete(element);
     element.removeAttribute('wve-selected');
-    if (this.selected.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
+    this.movers.delete(element);
+    if (this.movers.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
     this.emitSelectionChange();
   }
   // Deselect if the element is selected, otherwise select it
@@ -213,19 +221,13 @@ class App {
       this.select(el);
     }
   }
-  beginEdit() {
-    this.selectedBeforeEdit = new Map(
-      Array.from(
-        document.body.querySelectorAll('[wve-selected]')
-      ).map(
-        s => [s, s.cloneNode(true)]
-      )
-    );
+  beginStyleEdit() {
+    this.moversBeforeEdit = new Map(this.movers.values().map(el => [el, el.cloneNode(true)]));
   }
-  finishEdit(type) {
-    this.selected.forEach(element => {
+  finishStyleEdit(type) {
+    this.movers.forEach(element => {
       const style = element.getAttribute('style');
-      if (style === this.selectedBeforeEdit.get(element).getAttribute('style')) { return; }
+      if (style === this.moversBeforeEdit.get(element).getAttribute('style')) { return; }
       const operation = { type, style };
       const updated = this.codeEdits.some(edit => {
         if (edit.element === element) {
@@ -290,13 +292,11 @@ class App {
     this.updateKeyboardCombinedState();
 
     if (this.operation === '') {
-      if (!kbd.arrow) { return; }
-      if (this.selected.size > 0 && !prev.arrow) {
-        this.beginEdit();
-      }
+      if (!kbd.arrow || this.movers.size === 0) { return; }
+      if (!prev.arrow) { this.beginStyleEdit(); }
       const dx = kbd.ArrowRight ? 1 : kbd.ArrowLeft ? -1 : 0;
       const dy = kbd.ArrowDown ? 1 : kbd.ArrowUp ? -1 : 0;
-      this.selected.forEach(el => { this.moveElement(el, dx, dy); });
+      this.movers.forEach(el => { this.moveElement(el, dx, dy); });
       // Disable scroll
       event.preventDefault();
     }
@@ -317,7 +317,7 @@ class App {
     }
     this.updateKeyboardCombinedState();
     if (prev.arrow && !this.keyboard.arrow) {
-      this.finishEdit('move');
+      this.finishStyleEdit('move');
       this.emitCodeEdits();
     }
     if (event.key === 'Delete' && this.selected.length > 0) {
@@ -343,22 +343,20 @@ class App {
     this.mouse.start.pageX = this.mouse.current.pageX = pos.pageX;
     this.mouse.start.pageY = this.mouse.current.pageY = pos.pageY;
     // Determine whether to select or edit the element based on the click position
-    const atSelected = this.selected.values().some(el => {
+    const atMovers = this.movers.values().some(el => {
       const rect = el.getBoundingClientRect();
       return (
         rect.left <= this.mouse.current.viewportX && this.mouse.current.viewportX <= rect.right
         && rect.top <= this.mouse.current.viewportY && this.mouse.current.viewportY <= rect.bottom
       );
     });
-    if (!atSelected || this.keyboard.shiftOrControl) {
+    if (atMovers && !this.keyboard.Control) {
+      this.operation = 'moving';
+      this.beginStyleEdit();
+    } else {
       this.operation = 'selecting';
       this.selector.style.display = 'block';
-    } else if (atSelected) {
-      this.operation = 'moving';
-      this.beginEdit();
-    } else {
-      this.operation = '';
-      return;
+      if (!this.keyboard.Control) { this.deselect(); }
     }
     // Process at the start of selection
     if (this.operation === 'selecting') {
@@ -380,31 +378,28 @@ class App {
     if (this.keyboard.Shift) {
       const absDx = Math.abs(pos.clientX - this.mouse.start.viewportX);
       const absDy = Math.abs(pos.clientY - this.mouse.start.viewportY);
-      if (absDx > absDy) {
-        this.selected.forEach(el => {
-          const propY = el.dataset.wvePropY;
-          el.style[propY] = this.selectedBeforeEdit.get(el).style[propY];
+      const horizontal = absDx > absDy;
+      this.movers.forEach(el => {
+        const propFixed = horizontal ? el.dataset.wvePropY : el.dataset.wvePropX;
+        el.style[propFixed] = this.moversBeforeEdit.get(el).style[propFixed];
+        if (horizontal) {
           this.moveElement(el, dx, 0);
-        });
-      } else {
-        this.selected.forEach(el => {
-          const propX = el.dataset.wvePropX;
-          el.style[propX] = this.selectedBeforeEdit.get(el).style[propX];
+        } else {
           this.moveElement(el, 0, dy);
-        });
-      }
+        }
+      });
     } else {
-      this.selected.forEach(el => this.moveElement(el, dx, dy));
+      this.movers.forEach(el => this.moveElement(el, dx, dy));
     }
   };
 
   onMouseUp = event => {
     document.removeEventListener('mousemove', this.onMouseMove);
     if (this.operation === 'selecting') {
-      if (!this.keyboard.shiftOrControl) { this.deselect(); }
-      const selectorRect = this.selector.getBoundingClientRect();
-      if (selectorRect.width > 0 && selectorRect.height > 0) {
-        const targets = this.selectables.filter(el => {
+      if (this.mouse.start.viewportX !== this.mouse.current.viewportX
+        || this.mouse.start.viewportY !== this.mouse.current.viewportY) {
+        const selectorRect = this.selector.getBoundingClientRect();
+        const targets = this.userElements.filter(el => {
           const rect = el.getBoundingClientRect();
           return !(
             selectorRect.right < rect.left ||
@@ -418,13 +413,13 @@ class App {
             selectorRect.bottom <= rect.bottom
           );
         });
-        if (this.keyboard.shiftOrControl) {
+        if (this.keyboard.Control) {
           targets.forEach(el => this.toggleSelection(el));
         } else {
           targets.forEach(el => this.select(el));
         }
-      } else if (this.selectables.includes(event.target)) {
-        if (this.keyboard.shiftOrControl) {
+      } else if (event.target !== document.body) {
+        if (this.keyboard.Control) {
           this.toggleSelection(event.target);
         } else {
           this.select(event.target);
@@ -434,7 +429,7 @@ class App {
     } else {
       if (this.mouse.start.viewportX !== this.mouse.current.viewportX
         || this.mouse.start.viewportY !== this.mouse.current.viewportY) {
-        this.finishEdit('move');
+        this.finishStyleEdit('move');
       }
     }
     this.operation = '';
@@ -486,11 +481,11 @@ class App {
   }
 
   onClickGroupAlign = event => {
-    if (this.operation !== '' || this.selected.size < 2) { return; }
-    this.beginEdit();
+    if (this.operation !== '' || this.movers.size < 2) { return; }
+    this.beginStyleEdit();
     const [direction, alignTo] = event.target.id.split('-').slice(1);
-    const selected = Array.from(this.selected);
-    const anchors = selected.map(el => {
+    const movers = Array.from(this.movers);
+    const anchors = movers.map(el => {
       const rect = el.getBoundingClientRect();
       if (alignTo === 'center') {
         if (direction === 'vertical') {
@@ -505,24 +500,24 @@ class App {
     const destination = (alignTo === 'center' ? anchors[0]
       : Math[{ left: 'min', right: 'max', top: 'min', bottom: 'max' }[alignTo]](...anchors)
     );
-    selected.forEach((el, index) => {
+    movers.forEach((el, index) => {
       const dx = direction === 'vertical' ? 0 : destination - anchors[index];
       const dy = direction === 'horizontal' ? 0 : destination - anchors[index];
       this.moveElement(el, dx, dy);
     });
-    this.finishEdit();
+    this.finishStyleEdit();
     this.emitCodeEdits();
   };
 };
 
 const vscode = acquireVsCodeApi();
-const app = new App();
 
 // Initial display
 document.addEventListener('DOMContentLoaded', async () => {
+  const app = new App();
   // Remove Visual Studio Code default styles
   document.getElementById('_defaultStyles')?.remove();
-  app.initSelectables();
+  app.initMovables();
   app.initSelector();
   app.initToolbar();
   app.updateZoom();

@@ -22,25 +22,29 @@ html {
 
 body {
   overflow: auto;
+  position: static;
   zoom: var(--wve-zoom);
   margin: 0 0 0 calc(var(--wve-toolbar-width) / var(--wve-zoom));
   transform: none;
 }
 
-.wve-selectable:hover {
-  box-shadow: 0 0 0 1px currentColor;
+body :hover:not(:has(:hover), [wve-selected]) {
+  box-shadow: inset 0 0 0 max(100vh, 100vw) color-mix(in srgb, var(--vscode-focusBorder), transparent 80%);
 }
 
 [wve-selected] {
-  cursor: grab;
 
-  &,
-  &:hover {
-    box-shadow: 0 0 0 2px var(--vscode-editorWarning-foreground);
+  & {
+    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
   }
 
-  &:active {
-    cursor: grabbing;
+  &[wve-movable] {
+    cursor: grab;
+    box-shadow: 0 0 0 2px var(--vscode-editorWarning-foreground);
+
+    &:active {
+      cursor: grabbing;
+    }
   }
 
   * {
