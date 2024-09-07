@@ -117,13 +117,11 @@ class App {
   realPositionOf(event) {
     return Object.fromEntries(
       ['clientX', 'clientY', 'pageX', 'pageY'].map(
-        key => [key, event[key] / +this.zoom]
+        key => [key, Math.round(event[key] / +this.zoom)]
       )
     );
   }
   moveElement(el, dx, dy) {
-    dx = Math.trunc(dx);
-    dy = Math.trunc(dy);
     if (dx === 0 && dy === 0) { return; }
     const styles = el.computedStyleMap();
     if (dx !== 0) {
@@ -296,27 +294,11 @@ class App {
       if (this.selected.size > 0 && !prev.arrow) {
         this.beginEdit();
       }
+      const dx = kbd.ArrowRight ? 1 : kbd.ArrowLeft ? -1 : 0;
+      const dy = kbd.ArrowDown ? 1 : kbd.ArrowUp ? -1 : 0;
+      this.selected.forEach(el => { this.moveElement(el, dx, dy); });
+      // Disable scroll
       event.preventDefault();
-      if (kbd.ArrowUp || kbd.ArrowDown) {
-        this.selected.forEach(el => {
-          const propY = el.dataset.wvePropY;
-          const dy = (
-            ((propY === 'top' && kbd.ArrowDown) ||
-              (propY === 'bottom' && kbd.ArrowUp)) ? 1 : -1
-          );
-          this.moveElement(el, 0, dy);
-        });
-      }
-      if (kbd.ArrowLeft || kbd.ArrowRight) {
-        this.selected.forEach(el => {
-          const propX = el.dataset.wvePropX;
-          const dx = (
-            ((propX === 'left' && kbd.ArrowRight) ||
-              (propX === 'right' && kbd.ArrowLeft)) ? 1 : -1
-          );
-          this.moveElement(el, dx, 0);
-        });
-      }
     }
   };
 
