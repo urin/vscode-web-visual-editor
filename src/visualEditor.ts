@@ -224,7 +224,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     const isTextStart = destPos.character === startLine.firstNonWhitespaceCharacterIndex;
     const indentText = indentUnit.repeat(indentLevel);
     const text = (isTextStart ? '' : '\n' + indentText) + indentUnit + (
-      this.isValidHtml(clipboard)
+      event.data.isHtml
         ? this.formatHtml(clipboard, { indent_level: indentLevel + 1 }).trimStart()
         : he.escape(clipboard)
     ) + '\n' + indentText;
@@ -316,15 +316,6 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     timestamp.setAttribute('value', (new Date()).toISOString());
     document.head.appendChild(timestamp);
     webview.html = dom.serialize();
-  }
-
-  private isValidHtml(text: string) {
-    try {
-      JSDOM.fragment(text);
-      return true;
-    } catch (error) {
-      return false;
-    }
   }
 
   private formatHtml(

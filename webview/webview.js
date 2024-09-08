@@ -35,6 +35,7 @@ class App {
   selected = new Set();
   movers = new Set();
   moversBeforeEdit = null;
+  htmlParser = null;
 
   initMovables() {
     this.userElements.forEach(el => {
@@ -455,11 +456,16 @@ class App {
       })
     });
   };
-  onPaste = event => {
+  onPaste = async event => {
+    if (!this.htmlParser) { this.htmlParser = new DOMParser(); }
+    const isHtml = this.htmlParser.parseFromString(
+      await navigator.clipboard.readText(), 'text/html'
+    ).body.firstElementChild !== null;
     const dest = Array.from(this.selected).at(-1) ?? document.body;
     vscode.postMessage({
       type: 'paste',
       data: {
+        isHtml,
         codeRange: {
           start: +dest.dataset.wveCodeStart,
           end: +dest.dataset.wveCodeEnd
