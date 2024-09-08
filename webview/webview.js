@@ -2,8 +2,15 @@ class App {
   codeEdits = [];
   operation = '';
   keyboard = {
-    shiftOrCtrl: false,
+    // Combined state
     arrow: false,
+    // Single key
+    Shift: false,
+    Control: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+    ArrowUp: false,
+    ArrowDown: false,
   };
   mouse = {
     start: {
@@ -270,7 +277,6 @@ class App {
   }
   updateKeyboardCombinedState() {
     const kbd = this.keyboard;
-    kbd.shiftOrControl = kbd.Shift || kbd.Control;
     kbd.arrow = kbd.ArrowUp !== kbd.ArrowDown || kbd.ArrowLeft !== kbd.ArrowRight;
   }
   onKeyDown = event => {
@@ -304,8 +310,7 @@ class App {
   };
 
   onKeyUp = event => {
-    const kbd = this.keyboard;
-    const prev = { ...kbd };
+    const prev = { ...this.keyboard };
     switch (event.key) {
       case 'Shift':
       case 'Control':
@@ -510,7 +515,7 @@ class App {
       const dy = direction === 'horizontal' ? 0 : destination - anchors[index];
       this.moveElement(el, dx, dy);
     });
-    this.finishStyleEdit();
+    this.finishStyleEdit('move');
     this.emitCodeEdits();
   };
 };
@@ -535,7 +540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Message from extension host
   window.addEventListener('message', ({ data }) => {
     const { type, data: ranges } = data;
-    document.body.querySelectorAll('[data-wve-code-start]').forEach((element, index) => {
+    app.userElements.forEach((element, index) => {
       switch (type) {
         case 'codeRanges':
           element.setAttribute('data-wve-code-start', ranges[index].start);
