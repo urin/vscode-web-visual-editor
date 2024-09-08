@@ -10,7 +10,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   public activeCode: vscode.TextDocument | null = null;
 
   private readonly context: vscode.ExtensionContext;
-  private editorOptions = { insertSpaces: true, indentSize: 2, indentChar: ' ' };
+  private editorOptions = { insertSpaces: true, indentSize: 2, indentChar: ' ', indentUnit: '  ' };
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
   private readonly editedBy = new Set<vscode.WebviewPanel>();
 
@@ -18,11 +18,13 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     this.context = ec;
     // Get and update indentation setting
     const config = vscode.workspace.getConfiguration('editor', { languageId: 'html' });
-    const insertSpaces = !!config.get('insertSpaces');
+    const insertSpaces = config.get<boolean>('insertSpaces');
+    const indentSize = config.get<number>('tabSize')!;
     Object.assign(this.editorOptions, {
       insertSpaces,
-      indentSize: config.get('tabSize'),
-      indentChar: insertSpaces ? ' ' : '\t'
+      indentSize,
+      indentChar: insertSpaces ? ' ' : '\t',
+      indentUnit: insertSpaces ? ' '.repeat(indentSize) : '\t'
     });
     vscode.window.onDidChangeVisibleTextEditors(editors => {
       const htmlEditor = editors.find(e => e.document.languageId === 'html');
@@ -208,33 +210,34 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   // Paste process on WebView
   private async pasteToElement(code: vscode.TextDocument, event: any) {
     const clipboard = (await vscode.env.clipboard.readText()).trim();
+    if (clipboard.length === 0) { return; }
     const { start, end } = event.data.codeRange;
     const destPos = code.positionAt(
       start + code.getText(
         new vscode.Range(code.positionAt(start), code.positionAt(end))
       ).lastIndexOf('</')
     );
-    const { insertSpaces, indentSize } = this.editorOptions;
-    const indentLevel = Math.ceil(
-      code.lineAt(destPos.line).firstNonWhitespaceCharacterIndex
-      / (insertSpaces ? indentSize : 1)
-    );
-    const indentUnit = this.editorOptions.indentChar.repeat(indentSize);
-    const text = indentUnit + (
+    const { insertSpaces, indentSize, indentUnit } = this.editorOptions;
+    const startColumn = code.lineAt(destPos.line).firstNonWhitespaceCharacterIndex;
+    const indentLevel = Math.ceil(startColumn / (insertSpaces ? indentSize : 1));
+    const startLine = code.lineAt(destPos.line);
+    const isTextStart = destPos.character === startLine.firstNonWhitespaceCharacterIndex;
+    const indentText = indentUnit.repeat(indentLevel);
+    const text = (isTextStart ? '' : '\n' + indentText) + indentUnit + (
       this.isValidHtml(clipboard)
         ? this.formatHtml(clipboard, { indent_level: indentLevel + 1 }).trimStart()
         : he.escape(clipboard)
-    ) + '\n' + indentUnit.repeat(indentLevel);
+    ) + '\n' + indentText;
     const edit = new vscode.WorkspaceEdit();
     edit.insert(code.uri, destPos, text, { needsConfirmation: false, label: 'Paste on WebView' });
     vscode.workspace.applyEdit(edit);
     vscode.window.visibleTextEditors.forEach(editor => {
       if (editor.document !== code) { return; }
       editor.selection = new vscode.Selection(
-        destPos.with({ character: 0 }),
+        isTextStart ? destPos.with({ character: 0 }) : destPos,
         destPos.with({
-          line: destPos.line + Array.from(text.matchAll(/\n/g)).length,
-          character: text.split('\n').at(-1)!.length
+          line: destPos.line + Array.from(text.matchAll(/\n/g)).length - 1,
+          character: text.split('\n').at(-2)!.length + indentUnit.length
         })
       );
       editor.revealRange(
