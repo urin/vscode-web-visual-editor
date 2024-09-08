@@ -20,9 +20,9 @@ class App {
     }
   };
   toolbar = null;
-  zoom = '1';
-  linkCode = false;
-  userElements = Array.from(document.body.querySelectorAll('*'));
+  zoom = sessionStorage.getItem('zoom') || '1';
+  linkCode = !!sessionStorage.getItem('linkCode') || false;
+  userElements = Array.from(document.querySelectorAll('body *, body'));
   selector = null;
   movables = [];
   selected = new Set();
@@ -86,7 +86,7 @@ class App {
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
         <label class="wve-button">
           dataset_linked
-          <input id="${controls.toolbarLinkCode}" type="checkbox">
+          <input id="${controls.toolbarLinkCode}" type="checkbox"${this.linkCode ? ' checked' : ''}>
         </label>
       </fieldset>
       <fieldset id="${controls.toolbarGroupAlign}" disabled>
@@ -106,6 +106,7 @@ class App {
     this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
     this.toolbarLinkCode.addEventListener('change', event => {
       this.linkCode = event.target.checked;
+      sessionStorage.setItem('linkCode', this.linkCode.toString());
     });
     document.body.appendChild(fragment);
   }
@@ -466,8 +467,6 @@ class App {
     const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
     if (sign) {
       this.zoom = steps[steps.indexOf(this.zoom) + sign];
-    } else {
-      this.zoom = sessionStorage.getItem('zoom') || '1';
     }
     sessionStorage.setItem('zoom', this.zoom);
     document.documentElement.style.setProperty('--wve-zoom', this.zoom);
