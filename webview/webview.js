@@ -401,7 +401,7 @@ class App {
         const selectorRect = this.selector.getBoundingClientRect();
         const targets = this.userElements.filter(el => {
           const rect = el.getBoundingClientRect();
-          return !(
+          return el !== document.body && !(
             selectorRect.right < rect.left ||
             rect.right < selectorRect.left ||
             selectorRect.bottom < rect.top ||
