@@ -13,6 +13,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   private editorOptions = { insertSpaces: true, indentSize: 2, indentChar: ' ', indentUnit: '  ' };
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
   private readonly editedBy = new Set<vscode.WebviewPanel>();
+  private webviewOptions = new Map<vscode.TextDocument, Object>();
 
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
@@ -94,6 +95,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // Message from WebView
     panel.webview.onDidReceiveMessage(event => {
       switch (event.type) {
+        case 'initialize':
+          panel.webview.postMessage({
+            type: 'options',
+            data: this.webviewOptions.get(code)
+          });
+          break;
         case 'select':
           this.selectElements(code, event);
           break;
@@ -116,9 +123,17 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         case 'paste':
           this.pasteToElement(code, event);
           break;
+        case 'options':
+          this.webviewOptions.set(code, event.data);
+          break;
       }
     });
     // Update webview
+    if (!this.webviewOptions.has(code)) {
+      this.webviewOptions.set(code, {
+        zoom: '1', linkCode: false
+      });
+    }
     this.updateWebview(panel.webview, code);
   }
 
@@ -302,6 +317,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     );
     document.head.prepend(link);
     const script = document.createElement('script');
+    script.setAttribute('type', 'module');
     script.setAttribute('src',
       webview.asWebviewUri(
         vscode.Uri.file(path.join(this.context.extensionPath, 'webview', 'webview.js'))
