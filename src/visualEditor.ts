@@ -135,6 +135,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       });
     }
     this.updateWebview(panel.webview, code);
+    this.activeCode = code;
   }
 
   // Select code range of selected element
