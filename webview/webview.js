@@ -27,8 +27,8 @@ class App {
     }
   };
   toolbar = null;
-  zoom = sessionStorage.getItem('zoom') || '1';
-  linkCode = !!sessionStorage.getItem('linkCode') || false;
+  zoom = null;
+  linkCode = null;
   userElements = Array.from(document.querySelectorAll('body *, body'));
   selector = null;
   movables = [];
@@ -36,6 +36,12 @@ class App {
   movers = new Set();
   moversBeforeEdit = null;
   htmlParser = null;
+
+  constructor() {
+    const state = JSON.parse(sessionStorage.getItem(codeId) ?? '{}');
+    this.zoom = state.zoom ?? '1';
+    this.linkCode = state.linkCode ?? true;
+  }
 
   initMovables() {
     this.userElements.forEach(el => {
@@ -94,7 +100,7 @@ class App {
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
         <label class="wve-button">
           dataset_linked
-          <input id="${controls.toolbarLinkCode}" type="checkbox"${this.linkCode ? ' checked' : ''}>
+          <input id="${controls.toolbarLinkCode}" type="checkbox">
         </label>
       </fieldset>
       <fieldset id="${controls.toolbarGroupAlign}" disabled>
@@ -114,7 +120,7 @@ class App {
     this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
     this.toolbarLinkCode.addEventListener('change', event => {
       this.linkCode = event.target.checked;
-      sessionStorage.setItem('linkCode', this.linkCode.toString());
+      this.saveState();
     });
     document.body.appendChild(fragment);
   }
@@ -150,6 +156,41 @@ class App {
       el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
     }
   }
+
+  saveState() {
+    const state = Object.fromEntries(
+      ['zoom', 'linkCode'].map(key => [key, this[key]])
+    );
+    sessionStorage.setItem(codeId, JSON.stringify(state));
+    vscode.postMessage({ type: 'state', data: state });
+  }
+
+  updateZoom(sign) {
+    const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
+    if (sign) {
+      this.zoom = steps[steps.indexOf(this.zoom) + sign];
+      this.saveState();
+    }
+    document.documentElement.style.setProperty('--wve-zoom', this.zoom);
+    this.toolbarZoomValue.textContent = (
+      this.zoom.replace(/^0/, ' ').replace('.', '').padEnd(3, '0') + '%'
+    );
+    const stepIndex = steps.indexOf(this.zoom);
+    if (stepIndex < 0) { return; }
+    if (stepIndex === 0) {
+      this.toolbarZoomOut.setAttribute('disabled', '');
+    } else if (stepIndex === steps.length - 1) {
+      this.toolbarZoomIn.setAttribute('disabled', '');
+    } else {
+      this.toolbarZoomIn.removeAttribute('disabled');
+      this.toolbarZoomOut.removeAttribute('disabled');
+    }
+  }
+
+  updateLinkCode() {
+    this.toolbarLinkCode.checked = this.linkCode;
+  }
+
   // Emit code edit event to extension
   emitCodeEdits() {
     if (this.codeEdits.length === 0) { return; }
@@ -474,28 +515,6 @@ class App {
     });
   };
 
-  updateZoom(sign) {
-    const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
-    if (sign) {
-      this.zoom = steps[steps.indexOf(this.zoom) + sign];
-    }
-    sessionStorage.setItem('zoom', this.zoom);
-    document.documentElement.style.setProperty('--wve-zoom', this.zoom);
-    this.toolbarZoomValue.textContent = (
-      this.zoom.replace(/^0/, ' ').replace('.', '').padEnd(3, '0') + '%'
-    );
-    const stepIndex = steps.indexOf(this.zoom);
-    if (stepIndex < 0) { return; }
-    if (stepIndex === 0) {
-      this.toolbarZoomOut.setAttribute('disabled', '');
-    } else if (stepIndex === steps.length - 1) {
-      this.toolbarZoomIn.setAttribute('disabled', '');
-    } else {
-      this.toolbarZoomIn.removeAttribute('disabled');
-      this.toolbarZoomOut.removeAttribute('disabled');
-    }
-  }
-
   onClickGroupAlign = event => {
     if (this.operation !== '' || this.movers.size < 2) { return; }
     this.beginStyleEdit();
@@ -537,6 +556,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   app.initSelector();
   app.initToolbar();
   app.updateZoom();
+  app.updateLinkCode();
   document.addEventListener('mousedown', app.onMouseDown);
   document.addEventListener('keydown', app.onKeyDown);
   document.addEventListener('keyup', app.onKeyUp);
@@ -546,6 +566,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Message from extension host
   window.addEventListener('message', ({ data: { type, data } }) => {
     switch (type) {
+      case 'state':
+        Object.assign(app, data);
+        app.updateZoom();
+        app.updateLinkCode();
+        break;
       case 'codeRanges':
         app.userElements.forEach((element, index) => {
           const { start, end } = data[index];

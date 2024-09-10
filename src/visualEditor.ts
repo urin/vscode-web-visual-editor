@@ -94,6 +94,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // Message from WebView
     panel.webview.onDidReceiveMessage(event => {
       switch (event.type) {
+        case 'state':
+          this.codes.get(code)?.forEach(p => {
+            if (p === panel) { return; }
+            p.webview.postMessage(event);
+          });
+          break;
         case 'select':
           this.selectElements(code, event);
           break;
@@ -286,6 +292,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         el.setAttribute(attr, safeUri);
       });
     });
+    // Add code id
+    const codeId = document.createElement('script');
+    codeId.textContent = `const codeId = '${code.uri.toString()}';`;
+    document.head.appendChild(codeId);
     // Incorporate CSS files into layer and lower their priority
     const style = document.createElement('style');
     document.querySelectorAll('link[href][rel=stylesheet]').forEach(el => {
