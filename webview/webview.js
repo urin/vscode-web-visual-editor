@@ -1,5 +1,3 @@
-const vscode = acquireVsCodeApi();
-
 class App {
   codeEdits = [];
   operation = '';
@@ -29,23 +27,15 @@ class App {
     }
   };
   toolbar = null;
-  zoom = '1';
-  linkCode = false;
-  userElements = [];
+  zoom = sessionStorage.getItem('zoom') || '1';
+  linkCode = !!sessionStorage.getItem('linkCode') || false;
+  userElements = Array.from(document.querySelectorAll('body *, body'));
   selector = null;
   movables = [];
   selected = new Set();
   movers = new Set();
   moversBeforeEdit = null;
   htmlParser = null;
-
-  initialize() {
-    this.userElements = Array.from(document.querySelectorAll('body *, body'));
-    this.initMovables();
-    this.initToolbar();
-    this.initSelector();
-    this.updateZoom();
-  }
 
   initMovables() {
     this.userElements.forEach(el => {
@@ -124,7 +114,7 @@ class App {
     this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
     this.toolbarLinkCode.addEventListener('change', event => {
       this.linkCode = event.target.checked;
-      this.emitOptions();
+      sessionStorage.setItem('linkCode', this.linkCode.toString());
     });
     document.body.appendChild(fragment);
   }
@@ -160,16 +150,6 @@ class App {
       el.style[propY] = y + (propY === 'top' ? dy : -dy) + 'px';
     }
   }
-
-  emitOptions() {
-    vscode.postMessage({
-      type: 'options',
-      data: Object.fromEntries(
-        ['zoom', 'linkCode'].map(option => [option, this[option]])
-      )
-    });
-  }
-
   // Emit code edit event to extension
   emitCodeEdits() {
     if (this.codeEdits.length === 0) { return; }
@@ -498,8 +478,8 @@ class App {
     const steps = ['0.5', '0.67', '0.8', '0.9', '1', '1.1', '1.25', '1.5', '2'];
     if (sign) {
       this.zoom = steps[steps.indexOf(this.zoom) + sign];
-      this.emitOptions();
     }
+    sessionStorage.setItem('zoom', this.zoom);
     document.documentElement.style.setProperty('--wve-zoom', this.zoom);
     this.toolbarZoomValue.textContent = (
       this.zoom.replace(/^0/, ' ').replace('.', '').padEnd(3, '0') + '%'
@@ -546,13 +526,17 @@ class App {
   };
 };
 
+const vscode = acquireVsCodeApi();
+
 // Initial display
 document.addEventListener('DOMContentLoaded', async () => {
   const app = new App();
-  vscode.postMessage({ type: 'initialize' });
   // Remove Visual Studio Code default styles
   document.getElementById('_defaultStyles')?.remove();
-  app.initialize();
+  app.initMovables();
+  app.initSelector();
+  app.initToolbar();
+  app.updateZoom();
   document.addEventListener('mousedown', app.onMouseDown);
   document.addEventListener('keydown', app.onKeyDown);
   document.addEventListener('keyup', app.onKeyUp);
@@ -560,20 +544,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('cut', app.onCopyAndCut);
   document.addEventListener('paste', app.onPaste);
   // Message from extension host
-  window.addEventListener('message', ({ data: { type, data } }) => {
-    switch (type) {
-      case 'options':
-        Object.assign(app, data);
-        app.updateZoom();
-        app.toolbarLinkCode.checked = app.linkCode;
-        break;
-      case 'codeRanges':
-        app.userElements.forEach((element, index) => {
-          const { start, end } = data[index];
-          element.setAttribute('data-wve-code-start', start);
-          element.setAttribute('data-wve-code-end', end);
-        });
-        break;
-    }
+  window.addEventListener('message', ({ data }) => {
+    const { type, data: ranges } = data;
+    app.userElements.forEach((element, index) => {
+      switch (type) {
+        case 'codeRanges':
+          element.setAttribute('data-wve-code-start', ranges[index].start);
+          element.setAttribute('data-wve-code-end', ranges[index].end);
+          break;
+      }
+    });
   });
 });
