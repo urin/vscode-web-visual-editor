@@ -368,7 +368,7 @@ class App {
       this.finishStyleEdit('move');
       this.emitCodeEdits();
     }
-    if (event.key === 'Delete' && this.selected.length > 0) {
+    if (event.key === 'Delete' && this.selected.size > 0) {
       vscode.postMessage({
         type: 'delete',
         data: Array.from(this.selected).map(el => {
