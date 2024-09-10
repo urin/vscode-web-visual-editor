@@ -61,7 +61,7 @@ body :hover:not(:has(:hover), [wve-selected]) {
 }
 
 @layer reset {
-  [id^=wve-] {
+  body>[id^=wve-] {
 
     &,
     *,
@@ -71,6 +71,7 @@ body :hover:not(:has(:hover), [wve-selected]) {
       box-sizing: border-box;
       font-family: var(--vscode-font-family);
       font-size: 10px;
+      z-index: calc(infinity);
     }
   }
 }
@@ -93,6 +94,7 @@ body :hover:not(:has(:hover), [wve-selected]) {
   font-size: 24px;
   white-space: nowrap;
   word-wrap: normal;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 
   .wve-button {

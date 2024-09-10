@@ -9,8 +9,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   public activeCode: vscode.TextDocument | null = null;
 
-  private readonly context: vscode.ExtensionContext;
   private editorOptions = { insertSpaces: true, indentSize: 2, indentChar: ' ', indentUnit: '  ' };
+  private readonly context: vscode.ExtensionContext;
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
   private readonly editedBy = new Set<vscode.WebviewPanel>();
 
@@ -301,7 +301,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         vscode.Uri.file(path.join(this.context.extensionPath, 'webview', 'style.css'))
       ).toString()
     );
-    document.head.prepend(link);
+    document.head.appendChild(link);
     const script = document.createElement('script');
     script.setAttribute('src',
       webview.asWebviewUri(

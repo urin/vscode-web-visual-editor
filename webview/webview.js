@@ -544,15 +544,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('cut', app.onCopyAndCut);
   document.addEventListener('paste', app.onPaste);
   // Message from extension host
-  window.addEventListener('message', ({ data }) => {
-    const { type, data: ranges } = data;
-    app.userElements.forEach((element, index) => {
-      switch (type) {
-        case 'codeRanges':
-          element.setAttribute('data-wve-code-start', ranges[index].start);
-          element.setAttribute('data-wve-code-end', ranges[index].end);
-          break;
-      }
-    });
+  window.addEventListener('message', ({ data: { type, data } }) => {
+    switch (type) {
+      case 'codeRanges':
+        app.userElements.forEach((element, index) => {
+          const { start, end } = data[index];
+          element.setAttribute('data-wve-code-start', start);
+          element.setAttribute('data-wve-code-end', end);
+        });
+        break;
+    }
   });
 });
