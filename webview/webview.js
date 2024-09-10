@@ -499,6 +499,12 @@ class App {
   };
   onPaste = async event => {
     if (!this.htmlParser) { this.htmlParser = new DOMParser(); }
+    // NOTE Wait next focus due to fail to read clipboard in case pasted by context menu.
+    if (!document.hasFocus()) {
+      await new Promise(resolve => {
+        window.addEventListener('focus', resolve, { once: true });
+      });
+    }
     const isHtml = this.htmlParser.parseFromString(
       await navigator.clipboard.readText(), 'text/html'
     ).body.firstElementChild !== null;
