@@ -4,7 +4,7 @@ Edit HTML files visually in real-time.
 ## ✨ Features
 - 🖼️ **Visual Editing**: Edit HTML elements visually within the WebView.
 - ⏱️ **Real-Time Preview**: See changes reflected instantly as you edit.
-- 🪟 **Integrated with Visual Studio Code**: No additional processes and windows and well-integrated with VSCode theme.
+- 🧩 **Integrated with Visual Studio Code**: No additional processes and windows and well-integrated with VSCode theme.
 
 ### 📋 Functions
 - 🖱️ **Element Selection**: Select HTML elements with ease. Visual selections are synchronized with text selections on editor.

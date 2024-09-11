@@ -262,6 +262,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     document.querySelectorAll('script').forEach(el => { el.remove(); });
     document.querySelectorAll('body *, body').forEach(el => {
       // Remove event attributes
+      el.removeAttribute('disabled');
       const nameToRemove = [];
       for (const attr of el.attributes) {
         if (attr.name.startsWith('on')) {

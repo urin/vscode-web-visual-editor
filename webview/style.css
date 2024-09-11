@@ -15,27 +15,37 @@
   pointer-events: auto;
 }
 
-html {
+html,
+body {
   overflow: auto;
-  margin: 0;
+  inset: auto;
+  opacity: initial;
+  visibility: visible;
+  transform: none;
+  transform-style: flat;
+  transition: none;
+  animation: none;
+  box-shadow: 0 0 4px 0 color-mix(in srgb, currentColor, transparent 50%);
+}
+
+html {
+  margin-left: 0;
 }
 
 body {
-  overflow: auto;
-  position: static;
+  position: relative;
   zoom: var(--wve-zoom);
-  margin: 0 0 0 calc(var(--wve-toolbar-width) / var(--wve-zoom));
-  transform: none;
+  margin-left: calc(var(--wve-toolbar-width) / var(--wve-zoom));
 }
 
 body :hover:not(:has(:hover), [wve-selected]) {
-  box-shadow: inset 0 0 0 max(100vh, 100vw) color-mix(in srgb, var(--vscode-focusBorder), transparent 80%);
+  box-shadow: inset 0 0 0 max(100vh, 100vw) color-mix(in srgb, currentColor, transparent 90%);
 }
 
 [wve-selected] {
 
   & {
-    box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor, transparent 30%);
   }
 
   &[wve-movable] {
@@ -120,8 +130,8 @@ body :hover:not(:has(:hover), [wve-selected]) {
       }
 
       &:active {
-        color: var(--vscode-button-hoverBackground);
-        background-color: var(--vscode-editor-selectionHighlightBackground);
+        color: var(--vscode-textLink-foreground);
+        background-color: oklch(50% 0 0 / 0.1);
       }
     }
 
@@ -136,8 +146,8 @@ body :hover:not(:has(:hover), [wve-selected]) {
     }
 
     &:has(:checked) {
-      color: var(--vscode-button-hoverBackground);
-      background-color: var(--vscode-editor-selectionHighlightBackground);
+      color: var(--vscode-textLink-foreground);
+      background-color: oklch(50% 0 0 / 0.2);
     }
   }
 
@@ -150,7 +160,7 @@ body :hover:not(:has(:hover), [wve-selected]) {
 
   >fieldset {
     &:not(:first-child) {
-      border-top: 1px solid rgb(128 128 128 / 0.2);
+      border-top: 1px solid oklch(50% 0 0 / 0.2);
     }
   }
 }
@@ -159,11 +169,10 @@ body :hover:not(:has(:hover), [wve-selected]) {
   all: unset;
   box-sizing: border-box;
   position: absolute;
-  margin: 0;
-  padding: 0;
+  margin-left: calc(-1 * var(--wve-toolbar-width) / var(--wve-zoom));
   width: 0;
   height: 0;
-  background-color: rgb(128 128 128 / 0.15);
+  background-color: oklch(50% 0 0 / 0.15);
   /* NOTE Do not use border so that JavaScript can recognize mouse drag area. */
   box-shadow: 0 0 0 1px var(--vscode-editorWarning-foreground);
 }
