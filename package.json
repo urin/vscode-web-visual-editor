@@ -118,21 +118,28 @@
       }
     ],
     "menus": {
-      "editor/title": [
+      "explorer/context": [
         {
           "command": "web-visual-editor.open",
-          "when": "resourceLangId == 'html' && activeCustomEditorId != 'web-visual-editor.customEditor'",
-          "group": "navigation"
-        },
+          "when": "resourceLangId == html",
+          "group": "navigation@5"
+        }
+      ],
+      "editor/title": [
         {
           "command": "web-visual-editor.openBeside",
           "when": "resourceLangId == 'html' && activeCustomEditorId != 'web-visual-editor.customEditor'",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "web-visual-editor.open",
+          "when": "resourceLangId == 'html' && activeCustomEditorId != 'web-visual-editor.customEditor'",
+          "group": "navigation@2"
         },
         {
           "command": "web-visual-editor.showSource",
           "when": "activeCustomEditorId == 'web-visual-editor.customEditor'",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ]
     }

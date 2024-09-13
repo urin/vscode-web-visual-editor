@@ -95,13 +95,12 @@ class App {
     };
     this.toolbar.innerHTML = `
       <fieldset>
+        <label class="wve-button" title="Selecting elements highlights code">
+          <input id="${controls.toolbarLinkCode}" type="checkbox">
+        </label>
         <button id="${controls.toolbarZoomIn}" type="button" class="wve-button">zoom_in</button>
         <span id="${controls.toolbarZoomValue}">100%</span>
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
-        <label class="wve-button">
-          dataset_linked
-          <input id="${controls.toolbarLinkCode}" type="checkbox">
-        </label>
       </fieldset>
       <fieldset id="${controls.toolbarGroupAlign}" disabled>
         <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
@@ -339,7 +338,9 @@ class App {
         break;
     }
     this.updateKeyboardCombinedState();
-
+    if (!prev.Control && kbd.Control) {
+      document.body.classList.add('wve-adding-selection');
+    }
     if (this.operation === '') {
       if (!kbd.arrow || this.movers.size === 0) { return; }
       if (!prev.arrow) { this.beginStyleEdit(); }
@@ -364,6 +365,9 @@ class App {
         break;
     }
     this.updateKeyboardCombinedState();
+    if (prev.Control && !this.keyboard.Control) {
+      document.body.classList.remove('wve-adding-selection');
+    }
     if (prev.arrow && !this.keyboard.arrow) {
       this.finishStyleEdit('move');
       this.emitCodeEdits();

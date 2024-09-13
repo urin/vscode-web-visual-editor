@@ -4,17 +4,14 @@ import { VisualEditorProvider } from './visualEditor';
 export function activate(context: vscode.ExtensionContext) {
   const provider = new VisualEditorProvider(context);
   context.subscriptions.push(
-    vscode.window.registerCustomEditorProvider(
-      'web-visual-editor.customEditor',
-      provider
-    ),
-    vscode.commands.registerCommand('web-visual-editor.open', () => {
+    vscode.window.registerCustomEditorProvider('web-visual-editor.customEditor', provider),
+    vscode.commands.registerCommand('web-visual-editor.open', (uri: vscode.Uri) => {
       const activeEditor = vscode.window.activeTextEditor;
-      if (activeEditor?.document.languageId === 'html') {
+      if (uri) {
+        vscode.commands.executeCommand('vscode.openWith', uri, 'web-visual-editor.customEditor');
+      } else if (activeEditor?.document.languageId === 'html') {
         vscode.commands.executeCommand(
-          'vscode.openWith',
-          activeEditor.document.uri,
-          'web-visual-editor.customEditor'
+          'vscode.openWith', activeEditor.document.uri, 'web-visual-editor.customEditor'
         );
       }
     }),
