@@ -171,10 +171,8 @@ body :hover:not(:has(:hover), [wve-selected]) {
     align-items: center;
   }
 
-  >fieldset {
-    &:not(:first-child) {
-      border-top: 1px solid oklch(50% 0 0 / 0.2);
-    }
+  >fieldset:not(:first-child) {
+    border-top: 1px solid oklch(50% 0 0 / 0.2);
   }
 }
 

@@ -103,14 +103,14 @@ class App {
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
       </fieldset>
       <fieldset id="${controls.toolbarGroupAlign}" disabled>
-        <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
-        <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
-        <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
-        <button type="button" class="wve-button" id="align-vertical-justify">align_space_even</button>
         <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
         <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
         <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
+        <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
+        <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
+        <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
         <button type="button" class="wve-button" id="align-horizontal-justify">align_justify_space_even</button>
+        <button type="button" class="wve-button" id="align-vertical-justify">align_space_even</button>
       </fieldset>
     `;
     Object.entries(controls).forEach(([key, id]) => {
