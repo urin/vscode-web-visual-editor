@@ -106,9 +106,11 @@ class App {
         <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
         <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
         <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
+        <button type="button" class="wve-button" id="align-vertical-justify">align_space_even</button>
         <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
         <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
         <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
+        <button type="button" class="wve-button" id="align-horizontal-justify">align_justify_space_even</button>
       </fieldset>
     `;
     Object.entries(controls).forEach(([key, id]) => {
@@ -526,30 +528,73 @@ class App {
   };
 
   onClickGroupAlign = event => {
-    if (this.operation !== '' || this.movers.size < 2) { return; }
-    this.beginStyleEdit();
     const [direction, alignTo] = event.target.id.split('-').slice(1);
+    if (this.operation !== '' || this.movers.size < 2
+      || (alignTo === 'justify' && this.movers.size < 3)) {
+      return;
+    }
+    this.beginStyleEdit();
     const movers = Array.from(this.movers);
-    const anchors = movers.map(el => {
-      const rect = el.getBoundingClientRect();
-      if (alignTo === 'center') {
-        if (direction === 'vertical') {
-          return (rect.top + rect.bottom) / 2;
+    if (alignTo === 'justify') {
+      const [elementStart, elementEnd] = movers.reduce(([start, end], curr) => {
+        const rectStart = start.getBoundingClientRect();
+        const rectEnd = end.getBoundingClientRect();
+        const rectCurr = curr.getBoundingClientRect();
+        if (direction === 'horizontal') {
+          if (rectCurr.left < rectStart.left) { start = curr; }
+          if (rectEnd.right < rectCurr.right) { end = curr; }
         } else {
-          return (rect.left + rect.right) / 2;
+          if (rectCurr.top < rectStart.top) { start = curr; }
+          if (rectEnd.bottom < rectCurr.bottom) { end = curr; }
         }
-      } else {
-        return rect[alignTo];
-      }
-    });
-    const destination = (alignTo === 'center' ? anchors[0]
-      : Math[{ left: 'min', right: 'max', top: 'min', bottom: 'max' }[alignTo]](...anchors)
-    );
-    movers.forEach((el, index) => {
-      const dx = direction === 'vertical' ? 0 : destination - anchors[index];
-      const dy = direction === 'horizontal' ? 0 : destination - anchors[index];
-      this.moveElement(el, dx, dy);
-    });
+        return [start, end];
+      }, movers.slice(0, 2));
+      const targets = movers.filter(
+        el => el !== elementStart && el !== elementEnd
+      ).sort((a, b) => {
+        const prop = direction === 'horizontal' ? 'left' : 'top';
+        return a.getBoundingClientRect()[prop] - b.getBoundingClientRect()[prop];
+      });
+      const startEdge = elementStart.getBoundingClientRect()[direction === 'horizontal' ? 'right' : 'bottom'];
+      const gap = (
+        elementEnd.getBoundingClientRect()[direction === 'horizontal' ? 'left' : 'top']
+        - elementStart.getBoundingClientRect()[direction === 'horizontal' ? 'right' : 'bottom']
+        - targets.reduce((total, el) => {
+          return total + (direction === 'horizontal' ? el.offsetWidth : el.offsetHeight);
+        }, 0)
+      ) / (targets.length + 1);
+      let currentPosition = startEdge + gap;
+      targets.forEach(el => {
+        if (direction === 'horizontal') {
+          this.moveElement(el, currentPosition - el.getBoundingClientRect().left, 0);
+          currentPosition += el.offsetWidth + gap;
+        } else {
+          this.moveElement(el, 0, currentPosition - el.getBoundingClientRect().top);
+          currentPosition += el.offsetHeight + gap;
+        }
+      });
+    } else {
+      const anchors = movers.map(el => {
+        const rect = el.getBoundingClientRect();
+        if (alignTo === 'center') {
+          if (direction === 'vertical') {
+            return (rect.top + rect.bottom) / 2;
+          } else {
+            return (rect.left + rect.right) / 2;
+          }
+        } else {
+          return rect[alignTo];
+        }
+      });
+      const destination = (alignTo === 'center' ? anchors[0]
+        : Math[{ left: 'min', right: 'max', top: 'min', bottom: 'max' }[alignTo]](...anchors)
+      );
+      movers.forEach((el, index) => {
+        const dx = direction === 'vertical' ? 0 : destination - anchors[index];
+        const dy = direction === 'horizontal' ? 0 : destination - anchors[index];
+        this.moveElement(el, dx, dy);
+      });
+    }
     this.finishStyleEdit('move');
     this.emitCodeEdits();
   };
