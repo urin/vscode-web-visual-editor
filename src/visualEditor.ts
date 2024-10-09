@@ -49,7 +49,30 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         this.updateWebview(panel.webview, code);
       });
     });
-
+    // Process when text selection is changed
+    vscode.window.onDidChangeTextEditorSelection(event => {
+      const code = event.textEditor.document;
+      if (!this.codes.has(code) || (
+        event.kind && (
+          event.kind !== vscode.TextEditorSelectionChangeKind.Keyboard
+          && event.kind !== vscode.TextEditorSelectionChangeKind.Mouse
+        )
+      )) {
+        return;
+      }
+      const positions = event.selections.filter(
+        s => !s.isEmpty
+      ).map(
+        s => ({ start: code.offsetAt(s.start), end: code.offsetAt(s.end) })
+      );
+      if (positions.length === 0) { return; }
+      this.codes.get(code)?.forEach(panel => {
+        panel.webview.postMessage({
+          type: 'select',
+          data: positions
+        });
+      });
+    });
   }
 
   private postCodeRanges(code: vscode.TextDocument, panel: vscode.WebviewPanel) {

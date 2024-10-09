@@ -228,7 +228,7 @@ class App {
   }
 
   // Select element
-  select(element) {
+  select(element, emit = true) {
     if (this.selected.has(element)) { return; }
     if (this.selected.values().some(s => s.contains(element) || element.contains(s))) {
       return;
@@ -244,7 +244,7 @@ class App {
       this.movers.add(element);
     }
     if (this.movers.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
-    this.emitSelectionChange();
+    if (emit) { this.emitSelectionChange(); }
   }
   // Deselect element
   deselect(element = null) {
@@ -632,6 +632,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           element.setAttribute('data-wve-code-start', start);
           element.setAttribute('data-wve-code-end', end);
         });
+        break;
+      case 'select':
+        const selecting = data.reduce((collected, position) => {
+          const found = app.userElements.findLast(element => {
+            const [start, end] = [+element.dataset.wveCodeStart, +element.dataset.wveCodeEnd];
+            return start <= position.start && position.end <= end;
+          });
+          if (found) { collected.push(found); }
+          return collected;
+        }, []);
+        if (selecting.length === 0) { return; }
+        app.deselect();
+        selecting.forEach(el => app.select(el, false));
         break;
     }
   });
