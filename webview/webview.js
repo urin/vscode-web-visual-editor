@@ -634,6 +634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         break;
       case 'select':
+        if (!app.linkCode) { return; }
         const selecting = data.reduce((collected, position) => {
           const found = app.userElements.findLast(element => {
             const [start, end] = [+element.dataset.wveCodeStart, +element.dataset.wveCodeEnd];
