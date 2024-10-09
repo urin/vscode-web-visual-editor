@@ -22,6 +22,10 @@
   "bugs": {
     "url": "https://github.com/urin/vscode-web-visual-editor/issues"
   },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/urin"
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
