@@ -326,6 +326,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       style.append(`@import url('${el.getAttribute('href')}') layer(user-style);\n`);
       el.remove();
     });
+    style.id = 'wve-user-css-imports';
     document.head.appendChild(style);
     // Incorporate resources on WebView side
     const link = document.createElement('link');

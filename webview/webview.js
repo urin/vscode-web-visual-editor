@@ -607,6 +607,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const app = new App();
   // Remove Visual Studio Code default styles
   document.getElementById('_defaultStyles')?.remove();
+  // Incorporate styles into the user-layer
+  // NOTE Implement here rather than Extension Host due to JSDOM's lack of @layer support
+  document.querySelectorAll('style:not(#wve-user-css-imports)').forEach(el => {
+    el.textContent = `\n@layer user-style {\n${el.textContent}\n}`;
+  });
   app.initMovables();
   app.initSelector();
   app.initToolbar();
