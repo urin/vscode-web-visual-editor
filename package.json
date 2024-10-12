@@ -9,7 +9,7 @@
     "ui"
   ],
   "icon": "images/icon-logo.png",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "engines": {
     "vscode": "^1.92.0"
   },
@@ -22,8 +22,7 @@
   "bugs": {
     "url": "https://github.com/urin/vscode-web-visual-editor/issues"
   },
-  "funding": {
-    "type": "github",
+  "sponsor": {
     "url": "https://github.com/sponsors/urin"
   },
   "scripts": {
