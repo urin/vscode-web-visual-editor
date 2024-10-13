@@ -9,7 +9,7 @@
     "ui"
   ],
   "icon": "images/icon-logo.png",
-  "version": "0.0.15",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.92.0"
   },
