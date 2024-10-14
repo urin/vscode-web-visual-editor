@@ -1,4 +1,5 @@
-# Web Visual Editor
+# Web Visual Editor ![Installs](https://img.shields.io/visual-studio-marketplace/i/urin.vscode-web-visual-editor) ![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)
+
 Edit HTML files visually in real-time.
 
 [![Demo](https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/images/demo.webp)](https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/images/demo.webp)
@@ -15,6 +16,13 @@ Edit HTML files visually in real-time.
 - ↹ **Align Elements**: Easy to align elements.
 - ✂️ **Copy, Cut and Paste elements**: Copy or cut elements, paste text into selected element.
 - 🔒 **Script and Link Management**: Disable scripts and manage links for security.
+
+## Alternatives
+This extension is similar to [microsoft/vscode\-livepreview](https://github.com/microsoft/vscode-livepreview) and it differs in the following points:
+
+- The ability to synchronize code selection with visual selection in the preview.
+- Since Web Visual Editor has minimal functionality, the codebase is very small, making future expansions easy.
+- It is designed to reflect changes made in the preview back to the code, so enhancing the editing capabilities within the preview may be beneficial in the future. For example, you can copy, cut, paste and delete elements within preview at this moment.
 
 ## 📜 License
 [MIT License](LICENSE)
