@@ -1,10 +1,17 @@
+**/~*
+**/~*/**
 .vscode/**
 .vscode-test/**
 out/**
 node_modules/**
 src/**
+docs/**
 .gitignore
 esbuild.js
+.vscodeignore
+FUNDING.yml
+package-lock.json
+README.md
 **/tsconfig.json
 **/.eslintrc.json
 **/*.map

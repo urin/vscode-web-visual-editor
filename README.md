@@ -2,7 +2,7 @@
 
 Edit HTML files visually in real-time.
 
-[![Demo](https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/images/demo.webp)](https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/images/demo.webp)
+![Demo](https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/docs/demo.webp)
 
 ## ✨ Features
 - 🖼️ **Visual Editing**: Edit HTML elements visually within the WebView.
