@@ -13,6 +13,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly context: vscode.ExtensionContext;
   private readonly codes = new Map<vscode.TextDocument, Set<vscode.WebviewPanel>>();
   private readonly editedBy = new Set<vscode.WebviewPanel>();
+  private readonly resources = new Map<string, Set<vscode.TextDocument>>();
 
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
@@ -35,13 +36,19 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         indentSize: options.indentSize
       });
     });
+    // Process when file save
+    vscode.workspace.onDidSaveTextDocument(document => {
+      this.resources.get(document.uri.fsPath)?.forEach(code => {
+        this.codes.get(code)!.forEach(({ webview }) => {
+          this.updateWebview(webview, code);
+        });
+      });
+    });
     // Process when source code changes
     vscode.workspace.onDidChangeTextDocument(event => {
+      if (event.contentChanges.length === 0) { return; }
       const code = event.document;
-      if (!this.codes.has(code) || event.contentChanges.length === 0) {
-        return;
-      }
-      this.codes.get(code)!.forEach(panel => {
+      this.codes.get(code)?.forEach(panel => {
         if (this.editedBy.delete(panel)) {
           this.postCodeRanges(code, panel);
           return;
@@ -304,12 +311,19 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       el => el.setAttribute('onclick', 'event.preventDefault(), event.stopPropagation()')
     );
     document.body.querySelectorAll('input[type=file]').forEach(el => el.setAttribute('disabled', ''));
-    // Replace URIs (mainly for CSS files) to be handled in sandbox of WebView
+    // - Replace URIs (mainly for CSS files) to be handled in sandbox of WebView
+    // - Save resource path to update WebView when it changes
     ['href', 'src'].forEach(attr => {
       document.querySelectorAll(`[${attr}]`).forEach(el => {
         if (el.tagName === 'A') { return; }
-        const uri = el.getAttribute(attr);
-        if (!uri || uri.includes('//')) { return; }
+        const uri = el.getAttribute(attr)!;
+        if (!this.isRelativePath(uri)) { return; }
+        const filepath = path.join(path.dirname(code.uri.fsPath), uri);
+        if (this.resources.has(filepath)) {
+          this.resources.get(filepath)?.add(code);
+        } else {
+          this.resources.set(filepath, new Set([code]));
+        }
         const safeUri = webview.asWebviewUri(
           vscode.Uri.file(path.join(path.dirname(code.uri.fsPath), uri))
         ).toString();
@@ -363,6 +377,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       indent_size: this.editorOptions.indentSize
     }, options);
     return beautify.html(html, formatOptions);
+  }
+
+  private isRelativePath(path: string) {
+    try {
+      new URL(path);
+      return false;
+    } catch (e) {
+      return !path.startsWith('/');
+    }
   }
 
   private shortName(el: Element) {
