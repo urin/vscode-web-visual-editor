@@ -29,13 +29,12 @@ body {
 }
 
 html {
-  margin-left: 0;
+  margin-left: calc(var(--wve-toolbar-width) / var(--wve-zoom));
 }
 
 body {
   position: relative;
   zoom: var(--wve-zoom);
-  margin-left: calc(var(--wve-toolbar-width) / var(--wve-zoom));
 }
 
 body :hover:not(:has(:hover), [wve-selected]) {
