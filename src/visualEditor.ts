@@ -130,6 +130,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
             p.webview.postMessage(event);
           });
           break;
+        case 'refresh':
+          this.updateWebview(panel.webview, code);
+          break;
         case 'select':
           this.selectElements(code, event);
           break;

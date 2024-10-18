@@ -87,17 +87,19 @@ class App {
     this.toolbar.id = 'wve-toolbar';
     fragment.appendChild(this.toolbar);
     const controls = {
+      toolbarLinkCode: 'wve-link-code',
+      toolbarRefresh: 'wve-refresh',
       toolbarZoomValue: 'wve-zoom-value',
       toolbarZoomIn: 'wve-zoom-in',
       toolbarZoomOut: 'wve-zoom-out',
       toolbarGroupAlign: 'wve-group-align',
-      toolbarLinkCode: 'wve-link-code',
     };
     this.toolbar.innerHTML = `
       <fieldset>
-        <label class="wve-button" title="Selecting elements highlights code">
+        <label class="wve-button" title="Link selections with editor">
           <input id="${controls.toolbarLinkCode}" type="checkbox">
         </label>
+        <button id="${controls.toolbarRefresh}" type="button" class="wve-button">refresh</button>
         <button id="${controls.toolbarZoomIn}" type="button" class="wve-button">zoom_in</button>
         <span id="${controls.toolbarZoomValue}">100%</span>
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
@@ -122,6 +124,9 @@ class App {
     this.toolbarLinkCode.addEventListener('change', event => {
       this.linkCode = event.target.checked;
       this.saveState();
+    });
+    this.toolbarRefresh.addEventListener('click', event => {
+      vscode.postMessage({ type: 'refresh' });
     });
     document.body.appendChild(fragment);
   }
