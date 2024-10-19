@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { JSDOM } from 'jsdom';
-import beautify from 'js-beautify';
 import he from 'he';
 import path from 'path';
 
@@ -202,34 +201,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
           fragment.setAttribute('style', operation.style);
         }
       });
-      const { insertSpaces, indentSize } = this.editorOptions;
-      const indentLevel = Math.ceil(
-        code.lineAt(range.start.line).firstNonWhitespaceCharacterIndex
-        / (insertSpaces ? indentSize : 1)
-      );
-      const html = this.formatHtml(fragment.outerHTML, { indent_level: indentLevel }).trimStart();
-      edit.replace(code.uri, range, html, { needsConfirmation: false, label: 'Edit on WebView' });
+      edit.replace(code.uri, range, fragment.outerHTML, {
+        needsConfirmation: false, label: 'Edit on WebView'
+      });
     });
     if (shouldEdit) {
       vscode.workspace.applyEdit(edit);
     }
     return shouldEdit;
-  }
-
-  private getNiceRanges(code: vscode.TextDocument, ranges: any): vscode.Range[] {
-    return ranges.map((range: any) => {
-      let start = code.positionAt(range.codeRange.start);
-      const lineStart = code.lineAt(start.line);
-      if (start.character === lineStart.firstNonWhitespaceCharacterIndex) {
-        start = lineStart.range.start;
-      }
-      let end = code.positionAt(range.codeRange.end);
-      const lineEnd = code.lineAt(end.line);
-      if (end.isEqual(lineEnd.range.end)) {
-        end = lineEnd.rangeIncludingLineBreak.end;
-      }
-      return new vscode.Range(start, end);
-    });
   }
 
   private deleteElements(code: vscode.TextDocument, ranges: vscode.Range[]) {
@@ -240,16 +219,17 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   // Copy process on WebView
   private copyElements(code: vscode.TextDocument, ranges: vscode.Range[]) {
-    vscode.env.clipboard.writeText(
-      this.formatHtml(
-        ranges.map((range: vscode.Range) => code.getText(range)).join('\n')
-      ) + '\n'
-    );
+    const textToCopy = ranges.map((range: vscode.Range) => {
+      const indent = code.lineAt(range.start.line).text.match(/^\s+/);
+      const text = code.getText(range);
+      return indent === null ? text : text.replace(new RegExp(`^${indent}`, 'gm'), '');
+    }).join('\n');
+    vscode.env.clipboard.writeText(textToCopy);
   }
 
   // Paste process on WebView
   private async pasteToElement(code: vscode.TextDocument, event: any) {
-    const clipboard = (await vscode.env.clipboard.readText()).trim();
+    const clipboard = (await vscode.env.clipboard.readText()).trim() + '\n';
     if (clipboard.length === 0) { return; }
     const { start, end } = event.data.codeRange;
     const destPos = code.positionAt(
@@ -257,34 +237,34 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         new vscode.Range(code.positionAt(start), code.positionAt(end))
       ).lastIndexOf('</')
     );
-    const { insertSpaces, indentSize, indentUnit } = this.editorOptions;
-    const startColumn = code.lineAt(destPos.line).firstNonWhitespaceCharacterIndex;
-    const indentLevel = Math.ceil(startColumn / (insertSpaces ? indentSize : 1));
-    const startLine = code.lineAt(destPos.line);
-    const isTextStart = destPos.character === startLine.firstNonWhitespaceCharacterIndex;
-    const indentText = indentUnit.repeat(indentLevel);
-    const text = (isTextStart ? '' : '\n' + indentText) + indentUnit + (
-      event.data.isHtml
-        ? this.formatHtml(clipboard, { indent_level: indentLevel + 1 }).trimStart()
-        : he.escape(clipboard)
-    ) + '\n' + indentText;
-    const edit = new vscode.WorkspaceEdit();
-    edit.insert(code.uri, destPos, text, { needsConfirmation: false, label: 'Paste on WebView' });
-    vscode.workspace.applyEdit(edit);
+    const text = event.data.isHtml ? clipboard : he.escape(clipboard);
+    {
+      const edit = new vscode.WorkspaceEdit();
+      edit.insert(code.uri, destPos, text, { needsConfirmation: false, label: 'Paste on WebView' });
+      await vscode.workspace.applyEdit(edit);
+    }
+    {
+      const formatEdits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+        'vscode.executeFormatRangeProvider',
+        code.uri,
+        new vscode.Range(code.positionAt(start), code.positionAt(end + text.length)),
+        {
+          tabSize: this.editorOptions.indentSize,
+          insertSpaces: this.editorOptions.insertSpaces
+        }
+      );
+      const edit = new vscode.WorkspaceEdit();
+      for (const f of formatEdits) {
+        edit.replace(code.uri, f.range, f.newText, { needsConfirmation: false, label: 'Paste on WebView' });
+      }
+      await vscode.workspace.applyEdit(edit);
+    }
     vscode.window.visibleTextEditors.forEach(editor => {
       if (editor.document !== code) { return; }
-      editor.selection = new vscode.Selection(
-        isTextStart ? destPos.with({ character: 0 }) : destPos,
-        destPos.with({
-          line: destPos.line + Array.from(text.matchAll(/\n/g)).length - 1,
-          character: text.split('\n').at(-2)!.length + indentUnit.length
-        })
-      );
       editor.revealRange(
         new vscode.Range(destPos, destPos), vscode.TextEditorRevealType.InCenter
       );
     });
-
   }
 
   // Reflect content of source code to WebView
@@ -371,15 +351,20 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     webview.html = dom.serialize();
   }
 
-  private formatHtml(
-    html: string, options: js_beautify.HTMLBeautifyOptions = {}
-  ): string {
-    const formatOptions = Object.assign({
-      indent_with_tabs: !this.editorOptions.insertSpaces,
-      indent_char: this.editorOptions.insertSpaces ? ' ' : '\t',
-      indent_size: this.editorOptions.indentSize
-    }, options);
-    return beautify.html(html, formatOptions);
+  private getNiceRanges(code: vscode.TextDocument, ranges: any): vscode.Range[] {
+    return ranges.map((range: any) => {
+      let start = code.positionAt(range.codeRange.start);
+      const lineStart = code.lineAt(start.line);
+      if (start.character === lineStart.firstNonWhitespaceCharacterIndex) {
+        start = lineStart.range.start;
+      }
+      let end = code.positionAt(range.codeRange.end);
+      const lineEnd = code.lineAt(end.line);
+      if (end.isEqual(lineEnd.range.end)) {
+        end = lineEnd.rangeIncludingLineBreak.end;
+      }
+      return new vscode.Range(start, end);
+    });
   }
 
   private isRelativePath(path: string) {
