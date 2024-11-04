@@ -17,9 +17,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(private readonly ec: vscode.ExtensionContext) {
     this.context = ec;
     // Get and update indentation setting
-    const config = vscode.workspace.getConfiguration('editor', { languageId: 'html' });
-    const insertSpaces = config.get<boolean>('insertSpaces');
-    const indentSize = config.get<number>('tabSize')!;
+    const editorConfig = vscode.workspace.getConfiguration('editor', { languageId: 'html' });
+    const insertSpaces = editorConfig.get<boolean>('insertSpaces');
+    const indentSize = editorConfig.get<number>('tabSize')!;
     Object.assign(this.editorOptions, {
       insertSpaces,
       indentSize,
@@ -269,26 +269,29 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   // Reflect content of source code to WebView
   private updateWebview(webview: vscode.Webview, code: vscode.TextDocument) {
+    const config = vscode.workspace.getConfiguration('webVisualEditor');
     const dom = new JSDOM(code.getText(), { includeNodeLocations: true });
     const document = dom.window.document;
-    // Disable scripts in code
-    document.querySelectorAll('script').forEach(el => { el.remove(); });
-    document.querySelectorAll('body *, body').forEach(el => {
-      // Remove event attributes
-      el.removeAttribute('disabled');
-      const nameToRemove = [];
-      for (const attr of el.attributes) {
-        if (attr.name.startsWith('on')) {
-          nameToRemove.push(attr.name);
+    if (!config.get<boolean>('webVisualEditor.allowScript')) {
+      // Disable scripts in code
+      document.querySelectorAll('script').forEach(el => { el.remove(); });
+      document.querySelectorAll('body *, body').forEach(el => {
+        // Remove event attributes
+        el.removeAttribute('disabled');
+        const nameToRemove = [];
+        for (const attr of el.attributes) {
+          if (attr.name.startsWith('on')) {
+            nameToRemove.push(attr.name);
+          }
         }
-      }
-      nameToRemove.forEach(name => el.removeAttribute(name));
-      // Add source code location information to all elements in body
-      const location = dom.nodeLocation(el);
-      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
-      el.setAttribute('data-wve-code-start', location.startOffset.toString());
-      el.setAttribute('data-wve-code-end', location.endOffset.toString());
-    });
+        nameToRemove.forEach(name => el.removeAttribute(name));
+        // Add source code location information to all elements in body
+        const location = dom.nodeLocation(el);
+        if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
+        el.setAttribute('data-wve-code-start', location.startOffset.toString());
+        el.setAttribute('data-wve-code-end', location.endOffset.toString());
+      });
+    }
     // Disable links and file selection inputs
     document.body.querySelectorAll('a[href]').forEach(
       el => el.setAttribute('onclick', 'event.preventDefault(), event.stopPropagation()')
@@ -301,12 +304,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
         if (el.tagName === 'A') { return; }
         const uri = el.getAttribute(attr)!;
         if (!this.isRelativePath(uri)) { return; }
-        const filepath = path.join(path.dirname(code.uri.fsPath), uri);
-        if (this.resources.has(filepath)) {
-          this.resources.get(filepath)?.add(code);
-        } else {
-          this.resources.set(filepath, new Set([code]));
-        }
+        this.addToResources(code, uri);
         const safeUri = webview.asWebviewUri(
           vscode.Uri.file(path.join(path.dirname(code.uri.fsPath), uri))
         ).toString();
@@ -314,9 +312,11 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       });
     });
     // Add code id
-    const codeId = document.createElement('script');
-    codeId.textContent = `const codeId = '${code.uri.toString()}';`;
-    document.head.appendChild(codeId);
+    const embeddedScript = document.createElement('script');
+    embeddedScript.textContent = `const wve = ${JSON.stringify({
+      codeId: code.uri.toString(), config
+    })}`;
+    document.head.appendChild(embeddedScript);
     // Incorporate CSS files into layer and lower their priority
     const style = document.createElement('style');
     document.querySelectorAll('link[href][rel=stylesheet]').forEach(el => {
@@ -345,7 +345,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // NOTE WebView has HTML cache, and if the same string is set consecutively,
     // it will not reflect it even if actual HTML on the WebView has been updated.
     const timestamp = document.createElement('meta');
-    timestamp.setAttribute('name', 'timestamp');
+    timestamp.setAttribute('name', 'wve-timestamp');
     timestamp.setAttribute('value', (new Date()).toISOString());
     document.head.appendChild(timestamp);
     webview.html = dom.serialize();
@@ -365,6 +365,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       }
       return new vscode.Range(start, end);
     });
+  }
+
+  private addToResources(code: vscode.TextDocument, uri: string) {
+    const filepath = path.join(path.dirname(code.uri.fsPath), uri);
+    if (this.resources.has(filepath)) {
+      this.resources.get(filepath)?.add(code);
+    } else {
+      this.resources.set(filepath, new Set([code]));
+    }
   }
 
   private isRelativePath(path: string) {

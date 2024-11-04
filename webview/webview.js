@@ -1,4 +1,4 @@
-class App {
+class WebVisualEditor {
   codeEdits = [];
   operation = '';
   keyboard = {
@@ -38,7 +38,7 @@ class App {
   htmlParser = null;
 
   constructor() {
-    const state = JSON.parse(sessionStorage.getItem(codeId) ?? '{}');
+    const state = JSON.parse(sessionStorage.getItem(wve.codeId) ?? '{}');
     this.zoom = state.zoom ?? '1';
     this.linkCode = state.linkCode ?? true;
   }
@@ -94,7 +94,7 @@ class App {
       toolbarZoomOut: 'wve-zoom-out',
       toolbarGroupAlign: 'wve-group-align',
     };
-    this.toolbar.innerHTML = `
+    let toolbarHtml = (`
       <fieldset>
         <label class="wve-button" title="Link selections with editor">
           <input id="${controls.toolbarLinkCode}" type="checkbox">
@@ -104,30 +104,36 @@ class App {
         <span id="${controls.toolbarZoomValue}">100%</span>
         <button id="${controls.toolbarZoomOut}" type="button" class="wve-button">zoom_out</button>
       </fieldset>
-      <fieldset id="${controls.toolbarGroupAlign}" disabled>
-        <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
-        <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
-        <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
-        <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
-        <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
-        <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
-        <button type="button" class="wve-button" id="align-horizontal-justify">align_justify_space_even</button>
-        <button type="button" class="wve-button" id="align-vertical-justify">align_space_even</button>
-      </fieldset>
-    `;
+    `);
+    if (wve.config.enableMovingElements) {
+      toolbarHtml += `
+        <fieldset id="${controls.toolbarGroupAlign}" disabled>
+          <button type="button" class="wve-button" id="align-horizontal-left">align_horizontal_left</button>
+          <button type="button" class="wve-button" id="align-horizontal-center">align_horizontal_center</button>
+          <button type="button" class="wve-button" id="align-horizontal-right">align_horizontal_right</button>
+          <button type="button" class="wve-button" id="align-vertical-top">align_vertical_top</button>
+          <button type="button" class="wve-button" id="align-vertical-center">align_vertical_center</button>
+          <button type="button" class="wve-button" id="align-vertical-bottom">align_vertical_bottom</button>
+          <button type="button" class="wve-button" id="align-horizontal-justify">align_justify_space_even</button>
+          <button type="button" class="wve-button" id="align-vertical-justify">align_space_even</button>
+        </fieldset>`;
+    }
+    this.toolbar.innerHTML = toolbarHtml;
     Object.entries(controls).forEach(([key, id]) => {
       this[key] = fragment.getElementById(id);
     });
-    this.toolbarZoomIn.addEventListener('click', event => { this.updateZoom(1); });
-    this.toolbarZoomOut.addEventListener('click', event => { this.updateZoom(-1); });
-    this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
     this.toolbarLinkCode.addEventListener('change', event => {
       this.linkCode = event.target.checked;
       this.saveState();
     });
+    this.toolbarZoomIn.addEventListener('click', event => { this.updateZoom(1); });
+    this.toolbarZoomOut.addEventListener('click', event => { this.updateZoom(-1); });
     this.toolbarRefresh.addEventListener('click', event => {
       vscode.postMessage({ type: 'refresh' });
     });
+    if (wve.config.enableMovingElements) {
+      this.toolbarGroupAlign.addEventListener('click', this.onClickGroupAlign);
+    }
     document.body.appendChild(fragment);
   }
 
@@ -167,7 +173,7 @@ class App {
     const state = Object.fromEntries(
       ['zoom', 'linkCode'].map(key => [key, this[key]])
     );
-    sessionStorage.setItem(codeId, JSON.stringify(state));
+    sessionStorage.setItem(wve.codeId, JSON.stringify(state));
     vscode.postMessage({ type: 'state', data: state });
   }
 
@@ -213,7 +219,9 @@ class App {
     });
     vscode.postMessage({ type: 'edit', data });
     this.codeEdits = [];
-    this.moversBeforeEdit.clear();
+    if (wve.config.enableMovingElements) {
+      this.moversBeforeEdit.clear();
+    }
   }
 
   emitSelectionChange() {
@@ -245,10 +253,12 @@ class App {
     }
     this.selected.add(element);
     element.setAttribute('wve-selected', '');
-    if (element.hasAttribute('wve-movable')) {
-      this.movers.add(element);
+    if (wve.config.enableMovingElements) {
+      if (element.hasAttribute('wve-movable')) {
+        this.movers.add(element);
+      }
+      if (this.movers.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
     }
-    if (this.movers.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
     if (emit) { this.emitSelectionChange(); }
   }
   // Deselect element
@@ -265,8 +275,10 @@ class App {
     }
     this.selected.delete(element);
     element.removeAttribute('wve-selected');
-    this.movers.delete(element);
-    if (this.movers.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
+    if (wve.config.enableMovingElements) {
+      this.movers.delete(element);
+      if (this.movers.size < 2) { this.toolbarGroupAlign.setAttribute('disabled', ''); }
+    }
     this.emitSelectionChange();
   }
   // Deselect if the element is selected, otherwise select it
@@ -278,9 +290,12 @@ class App {
     }
   }
   beginStyleEdit() {
-    this.moversBeforeEdit = new Map(this.movers.values().map(el => [el, el.cloneNode(true)]));
+    if (wve.config.enableMovingElements) {
+      this.moversBeforeEdit = new Map(this.movers.values().map(el => [el, el.cloneNode(true)]));
+    }
   }
   finishStyleEdit(type) {
+    if (!wve.config.enableMovingElements) { return; }
     this.movers.forEach(element => {
       const style = element.getAttribute('style');
       if (style === this.moversBeforeEdit.get(element).getAttribute('style')) { return; }
@@ -348,14 +363,16 @@ class App {
     if (!prev.Control && kbd.Control) {
       document.body.classList.add('wve-adding-selection');
     }
-    if (this.operation === '') {
-      if (!kbd.arrow || this.movers.size === 0) { return; }
-      if (!prev.arrow) { this.beginStyleEdit(); }
-      const dx = kbd.ArrowRight ? 1 : kbd.ArrowLeft ? -1 : 0;
-      const dy = kbd.ArrowDown ? 1 : kbd.ArrowUp ? -1 : 0;
-      this.movers.forEach(el => { this.moveElement(el, dx, dy); });
-      // Disable scroll
-      event.preventDefault();
+    if (wve.config.enableMovingElements) {
+      if (this.operation === '') {
+        if (!kbd.arrow || this.movers.size === 0) { return; }
+        if (!prev.arrow) { this.beginStyleEdit(); }
+        const dx = kbd.ArrowRight ? 1 : kbd.ArrowLeft ? -1 : 0;
+        const dy = kbd.ArrowDown ? 1 : kbd.ArrowUp ? -1 : 0;
+        this.movers.forEach(el => { this.moveElement(el, dx, dy); });
+        // Disable scroll
+        event.preventDefault();
+      }
     }
   };
 
@@ -375,7 +392,7 @@ class App {
     if (prev.Control && !this.keyboard.Control) {
       document.body.classList.remove('wve-adding-selection');
     }
-    if (prev.arrow && !this.keyboard.arrow) {
+    if (wve.config.enableMovingElements && prev.arrow && !this.keyboard.arrow) {
       this.finishStyleEdit('move');
       this.emitCodeEdits();
     }
@@ -609,7 +626,7 @@ const vscode = acquireVsCodeApi();
 
 // Initial display
 document.addEventListener('DOMContentLoaded', async () => {
-  const app = new App();
+  const app = new WebVisualEditor();
   // Remove Visual Studio Code default styles
   document.getElementById('_defaultStyles')?.remove();
   // Incorporate styles into the user-layer
@@ -617,7 +634,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('style:not(#wve-user-css-imports)').forEach(el => {
     el.textContent = `\n@layer user-style {\n${el.textContent}\n}`;
   });
-  app.initMovables();
+  if (wve.config.enableMovingElements) {
+    app.initMovables();
+  }
   app.initSelector();
   app.initToolbar();
   app.updateZoom();

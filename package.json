@@ -9,7 +9,7 @@
     "ui"
   ],
   "icon": "images/icon-logo.png",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "engines": {
     "vscode": "^1.92.0"
   },
@@ -143,6 +143,22 @@
           "group": "navigation@3"
         }
       ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Web Visual Editor",
+      "properties": {
+        "webVisualEditor.allowScript": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable JavaScript in preview."
+        },
+        "webVisualEditor.enableMovingElements": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable moving position of elements in preview."
+        }
+      }
     }
   }
 }
