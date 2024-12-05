@@ -317,6 +317,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       codeId: code.uri.toString(), config
     })}`;
     document.head.appendChild(embeddedScript);
+    // Default style
+    const defaultStyle = document.createElement('style');
+    defaultStyle.textContent = 'html, body { background-color: white; }';
+    document.head.prepend(defaultStyle);
     // Incorporate CSS files into layer and lower their priority
     const style = document.createElement('style');
     document.querySelectorAll('link[href][rel=stylesheet]').forEach(el => {
