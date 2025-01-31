@@ -1,5 +1,6 @@
 {
   "name": "vscode-web-visual-editor",
+  "version": "0.1.7",
   "displayName": "Web Visual Editor",
   "description": "Edit HTML files visually.",
   "categories": [
@@ -9,7 +10,6 @@
     "ui"
   ],
   "icon": "images/icon-logo.png",
-  "version": "0.1.6",
   "engines": {
     "vscode": "^1.92.0"
   },
