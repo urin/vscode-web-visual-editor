@@ -272,7 +272,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     const config = vscode.workspace.getConfiguration('webVisualEditor');
     const dom = new JSDOM(code.getText(), { includeNodeLocations: true });
     const document = dom.window.document;
-    if (!config.get<boolean>('webVisualEditor.allowScript')) {
+    if (!config.get<boolean>('allowScript')) {
       // Disable scripts in code
       document.querySelectorAll('script').forEach(el => { el.remove(); });
       document.querySelectorAll('body *, body').forEach(el => {
