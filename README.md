@@ -13,7 +13,6 @@ Edit HTML files visually in real-time.
 - 🖱️ **Element Selection**: Select HTML elements with ease. Visual selections are synchronized with text selections on editor. Vice versa.
 - ✂️ **Copy, Cut and Paste elements**: Copy or cut elements, paste text into selected element.
 - 🔍 **Zoom in and out**: Zoom in and out the page.
-- 🔒 **Script and Link Management**: Disable scripts and manage links for security.
 - ↕ **Move Elements**: Drag elements to rearrange their position.
 
 ## 🔀 Alternatives
