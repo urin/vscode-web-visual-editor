@@ -285,13 +285,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
           }
         }
         nameToRemove.forEach(name => el.removeAttribute(name));
-        // Add source code location information to all elements in body
-        const location = dom.nodeLocation(el);
-        if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
-        el.setAttribute('data-wve-code-start', location.startOffset.toString());
-        el.setAttribute('data-wve-code-end', location.endOffset.toString());
       });
     }
+    document.querySelectorAll('body *, body').forEach(el => {
+      // Add source code location information to all elements in body
+      const location = dom.nodeLocation(el);
+      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
+      el.setAttribute('data-wve-code-start', location.startOffset.toString());
+      el.setAttribute('data-wve-code-end', location.endOffset.toString());
+    });
     // Disable links and file selection inputs
     document.body.querySelectorAll('a[href]').forEach(
       el => el.setAttribute('onclick', 'event.preventDefault(), event.stopPropagation()')
