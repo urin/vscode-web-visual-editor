@@ -45,6 +45,13 @@
       }
     },
     {
+      "label": "package",
+      "type": "shell",
+      "command": "vsce package",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "publish-extension",
       "type": "shell",
       "command": "vsce publish",

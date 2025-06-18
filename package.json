@@ -11,7 +11,7 @@
   ],
   "icon": "images/icon-logo.png",
   "engines": {
-    "vscode": "^1.92.0"
+    "vscode": "^1.99.0"
   },
   "publisher": "Urin",
   "author": "Urin",
