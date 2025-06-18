@@ -290,7 +290,11 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     document.querySelectorAll('body *, body').forEach(el => {
       // Add source code location information to all elements in body
       const location = dom.nodeLocation(el);
-      if (!location) { throw Error(`Failed to get nodeLocation of element ${el}`); }
+      if (!location) {
+        // NOTE `location` can be null if the element is implicitly inserted
+        // according to the HTML specification (e.g., `table > tbody`).
+        return;
+      }
       el.setAttribute('data-wve-code-start', location.startOffset.toString());
       el.setAttribute('data-wve-code-end', location.endOffset.toString());
     });
