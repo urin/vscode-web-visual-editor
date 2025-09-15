@@ -1,5 +1,6 @@
 class WebVisualEditor {
   codeEdits = [];
+  eventFromEditor = false;
   operation = '';
   keyboard = {
     // Combined state
@@ -241,7 +242,7 @@ class WebVisualEditor {
   }
 
   // Select element
-  select(element, emit = true) {
+  select(element) {
     if (this.selected.has(element)) { return; }
     if (this.selected.values().some(s => s.contains(element) || element.contains(s))) {
       return;
@@ -259,15 +260,15 @@ class WebVisualEditor {
       }
       if (this.movers.size > 1) { this.toolbarGroupAlign.removeAttribute('disabled'); }
     }
-    if (emit) { this.emitSelectionChange(); }
+    if (!this.eventFromEditor) { this.emitSelectionChange(); }
   }
   // Deselect element
   deselect(element = null) {
-    if (!element) {
+    if (!this.eventFromEditor && !element) {
       this.selected.values().forEach(el => { this.deselect(el); });
       return;
     }
-    if (!this.selected.has(element)) { return; }
+    if (!this.selected.has(element) || this.eventFromEditor) { return; }
     if (this.codeEdits.some(edit => (
       edit.element !== element && (edit.element.contains(element) || element.contains(edit.element))
     ))) {
@@ -658,6 +659,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       case 'codeRanges':
         app.userElements.forEach((element, index) => {
           const { start, end } = data[index];
+          if (!start || !end) {
+            return;
+          }
           element.setAttribute('data-wve-code-start', start);
           element.setAttribute('data-wve-code-end', end);
         });
@@ -673,8 +677,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           return collected;
         }, []);
         if (selecting.length === 0) { return; }
+        app.eventFromEditor = true;
         app.deselect();
-        selecting.forEach(el => app.select(el, false));
+        selecting.forEach(el => app.select(el));
+        app.eventFromEditor = false;
         break;
     }
   });
