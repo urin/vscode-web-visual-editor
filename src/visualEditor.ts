@@ -86,10 +86,10 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     panel.webview.postMessage({
       type: 'codeRanges',
       data: Array.from(dom.window.document.querySelectorAll('body *, body')).map(element => {
-        const range = dom.nodeLocation(element)!;
+        const range = dom.nodeLocation(element);
         return {
           element: this.shortName(element),
-          start: range.startOffset, end: range.endOffset
+          start: range?.startOffset, end: range?.endOffset
         };
       })
     });
