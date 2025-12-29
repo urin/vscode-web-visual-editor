@@ -146,7 +146,7 @@ class WebVisualEditor {
   }
   realPositionOf(event) {
     return Object.fromEntries(
-      ['clientX', 'clientY', 'pageX', 'pageY'].map(
+      ['clientX', 'clientY', 'pageX', 'pageY', 'movementX', 'movementY'].map(
         key => [key, Math.round(event[key] / +this.zoom)]
       )
     );
@@ -440,13 +440,13 @@ class WebVisualEditor {
       this.drawSelector();
     }
     document.addEventListener('mouseup', this.onMouseUp, { once: true });
-    document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('pointermove', this.onPointerMove);
   };
 
-  onMouseMove = event => {
+  onPointerMove = event => {
     const pos = this.realPositionOf(event);
-    const dx = pos.clientX - this.mouse.current.viewportX;
-    const dy = pos.clientY - this.mouse.current.viewportY;
+    const dx = pos.movementX;
+    const dy = pos.movementY;
     this.mouse.current.viewportX += dx;
     this.mouse.current.viewportY += dy;
     this.mouse.current.pageX = pos.pageX;
@@ -471,7 +471,7 @@ class WebVisualEditor {
   };
 
   onMouseUp = event => {
-    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('pointermove', this.onPointerMove);
     if (this.operation === 'selecting') {
       if (this.mouse.start.viewportX !== this.mouse.current.viewportX
         || this.mouse.start.viewportY !== this.mouse.current.viewportY) {
