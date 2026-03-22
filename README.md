@@ -43,8 +43,8 @@ An element is draggable when all of the following are true:
 
 ### ✂️ Copy / Cut / Paste
 
-- **Copy / Cut**: `Ctrl+C` / `Ctrl+X` copies the source text of the selected elements to the clipboard — the same range that is highlighted in the source editor. Cut also removes the elements from the source.
-- **Paste**: `Ctrl+V` inserts clipboard content just before the closing tag of the last selected element (or `<body>` if nothing is selected). If the clipboard contains valid HTML it is inserted as-is; plain text is HTML-escaped first. The inserted range is then reformatted by VSCode's HTML formatter.
+- **Copy / Cut**: copies the source text of the selected elements to the clipboard — the same range that is highlighted in the source editor. Cut also removes the elements from the source.
+- **Paste**: inserts clipboard content just before the closing tag of the last selected element (or `<body>` if nothing is selected). If the clipboard contains valid HTML it is inserted as-is; plain text is HTML-escaped first. The inserted range is then reformatted by VSCode's HTML formatter.
 
 ## 🔀 Alternatives
 This extension is similar to [microsoft/vscode\-livepreview](https://github.com/microsoft/vscode-livepreview) and it differs in the following points:
