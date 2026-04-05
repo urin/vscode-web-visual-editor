@@ -1,4 +1,4 @@
-# Web Visual Editor [![Installs](https://img.shields.io/visual-studio-marketplace/i/urin.vscode-web-visual-editor)](https://marketplace.visualstudio.com/items?itemName=Urin.vscode-web-visual-editor) [![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)](https://api.star-history.com/svg?repos=urin/vscode-web-visual-editor&type=Timeline)
+# Web Visual Editor [![Installs](https://img.shields.io/visual-studio-marketplace/i/urin.vscode-web-visual-editor?cacheSeconds=86400)](https://marketplace.visualstudio.com/items?itemName=Urin.vscode-web-visual-editor) [![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)](https://api.star-history.com/svg?repos=urin/vscode-web-visual-editor&type=Timeline)
 
 Edit HTML files visually in real-time.
 
