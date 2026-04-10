@@ -29,7 +29,7 @@ body {
 }
 
 html {
-  margin-left: calc(var(--wve-toolbar-width) / var(--wve-zoom));
+  margin-left: var(--wve-toolbar-width);
 }
 
 body {
