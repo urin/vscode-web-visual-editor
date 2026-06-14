@@ -305,14 +305,18 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     document.body.querySelectorAll('input[type=file]').forEach(el => el.setAttribute('disabled', ''));
     // - Replace URIs (mainly for CSS files) to be handled in sandbox of WebView
     // - Save resource path to update WebView when it changes
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(code.uri);
+    const workspaceRoot = workspaceFolder?.uri.fsPath ?? path.dirname(code.uri.fsPath);
     ['href', 'src'].forEach(attr => {
       document.querySelectorAll(`[${attr}]`).forEach(el => {
         if (el.tagName === 'A') { return; }
         const uri = el.getAttribute(attr)!;
         if (!this.isRelativePath(uri)) { return; }
         this.addToResources(code, uri);
+        const basePath = uri.startsWith('/') ? workspaceRoot : path.dirname(code.uri.fsPath);
+        const resolvedPath = path.join(basePath, uri.replace(/^\//, ''));
         const safeUri = webview.asWebviewUri(
-          vscode.Uri.file(path.join(path.dirname(code.uri.fsPath), uri))
+          vscode.Uri.file(resolvedPath)
         ).toString();
         el.setAttribute(attr, safeUri);
       });
@@ -391,7 +395,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       new URL(path);
       return false;
     } catch (e) {
-      return !path.startsWith('/');
+      return true; // Treat all non-URLs as relative (including /path)
     }
   }
 
