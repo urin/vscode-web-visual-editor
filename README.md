@@ -7,7 +7,7 @@ Edit HTML files visually in real-time.
 
 ## 📋 Changelog
 
-### 0.1.13 (2026-06-14)
+### 0.1.14 (2026-06-14)
 - **Fixed**: Root-relative paths (`/scripts/...`) now resolve from workspace root instead of HTML file's directory
 - **Fixed**: Relative paths with leading `/` (e.g., `/scripts.js`) are now properly handled in WebView
 - These changes allow simulating a local server where `/scripts/` references work from any HTML file in the workspace
