@@ -1,16 +1,6 @@
-> [!NOTE]
-> This project was developed with the assistance of AI (OpenCode with Nemotron-3-Ultra).
-
 # Web Visual Editor [![Installs](https://img.shields.io/visual-studio-marketplace/i/urin.vscode-web-visual-editor?cacheSeconds=86400)](https://marketplace.visualstudio.com/items?itemName=Urin.vscode-web-visual-editor) [![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)](https://api.star-history.com/svg?repos=urin/vscode-web-visual-editor&type=Timeline)
 
 Edit HTML files visually in real-time.
-
-## 📋 Changelog
-
-### 0.1.14 (2026-06-14)
-- **Fixed**: Root-relative paths (`/scripts/...`) now resolve from workspace root instead of HTML file's directory
-- **Fixed**: Relative paths with leading `/` (e.g., `/scripts.js`) are now properly handled in WebView
-- These changes allow simulating a local server where `/scripts/` references work from any HTML file in the workspace
 
 <img src="https://raw.githubusercontent.com/urin/vscode-web-visual-editor/main/docs/demo.webp" alt="Demo">
 

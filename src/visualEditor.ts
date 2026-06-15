@@ -305,19 +305,17 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     document.body.querySelectorAll('input[type=file]').forEach(el => el.setAttribute('disabled', ''));
     // - Replace URIs (mainly for CSS files) to be handled in sandbox of WebView
     // - Save resource path to update WebView when it changes
+    const curdir = path.dirname(code.uri.fsPath);
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(code.uri);
-    const workspaceRoot = workspaceFolder?.uri.fsPath ?? path.dirname(code.uri.fsPath);
+    const root = workspaceFolder?.uri.fsPath ?? curdir;
     ['href', 'src'].forEach(attr => {
       document.querySelectorAll(`[${attr}]`).forEach(el => {
         if (el.tagName === 'A') { return; }
         const uri = el.getAttribute(attr)!;
-        if (!this.isRelativePath(uri)) { return; }
-        this.addToResources(code, uri);
-        const basePath = uri.startsWith('/') ? workspaceRoot : path.dirname(code.uri.fsPath);
-        const resolvedPath = path.join(basePath, uri.replace(/^\//, ''));
-        const safeUri = webview.asWebviewUri(
-          vscode.Uri.file(resolvedPath)
-        ).toString();
+        if (!this.isLocalResource(uri)) { return; }
+        const resolvedPath = path.join(uri.startsWith('/') ? root : curdir, uri.replace(/^\//, ''));
+        this.addToResources(code, resolvedPath);
+        const safeUri = webview.asWebviewUri(vscode.Uri.file(resolvedPath)).toString();
         el.setAttribute(attr, safeUri);
       });
     });
@@ -381,8 +379,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
   }
 
-  private addToResources(code: vscode.TextDocument, uri: string) {
-    const filepath = path.join(path.dirname(code.uri.fsPath), uri);
+  private addToResources(code: vscode.TextDocument, filepath: string) {
     if (this.resources.has(filepath)) {
       this.resources.get(filepath)?.add(code);
     } else {
@@ -390,13 +387,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     }
   }
 
-  private isRelativePath(path: string) {
-    try {
-      new URL(path);
-      return false;
-    } catch (e) {
-      return true; // Treat all non-URLs as relative (including /path)
-    }
+  private isLocalResource(path: string) {
+    // Treat a path as a local resource if it resolves to the same origin as a dummy
+    // base URL. This excludes absolute URLs (`https://...`), protocol-relative URLs
+    // (`//cdn.example.com/...`), and special schemes (`mailto:`, `data:`, etc., which
+    // resolve to an opaque origin), while including normal relative paths and
+    // root-relative paths (e.g., `/scripts/main.js`).
+    const base = 'https://wve-local-resource.invalid/';
+    return new URL(path, base).origin === new URL(base).origin;
   }
 
   private shortName(el: Element) {
