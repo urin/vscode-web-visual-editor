@@ -337,6 +337,23 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     });
     style.id = 'wve-user-css-imports';
     document.head.appendChild(style);
+    if (config.get<boolean>('allowScript')) {
+      const globalScripts = config.get<string[]>('globalScripts') ?? [];
+      for (const src of globalScripts) {
+        const el = document.createElement('script');
+        if (this.isLocalResource(src)) {
+          const resolvedPath = path.join(
+            src.startsWith('/') ? root : curdir,
+            src.replace(/^\//, '')
+          );
+          this.addToResources(code, resolvedPath);
+          el.setAttribute('src', webview.asWebviewUri(vscode.Uri.file(resolvedPath)).toString());
+        } else {
+          el.setAttribute('src', src);
+        }
+        document.head.appendChild(el);
+      }
+    }
     // Incorporate resources on WebView side
     const link = document.createElement('link');
     link.setAttribute('rel', 'stylesheet');
