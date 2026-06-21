@@ -307,7 +307,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     // - Save resource path to update WebView when it changes
     const curdir = path.dirname(code.uri.fsPath);
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(code.uri);
-    const root = workspaceFolder?.uri.fsPath ?? curdir;
+    const workspaceRoot = workspaceFolder?.uri.fsPath ?? curdir;
+    const root = this.resolveRoot(config, workspaceRoot);
     ['href', 'src'].forEach(attr => {
       document.querySelectorAll(`[${attr}]`).forEach(el => {
         if (el.tagName === 'A') { return; }
@@ -402,6 +403,16 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     } else {
       this.resources.set(filepath, new Set([code]));
     }
+  }
+
+  private resolveRoot(config: vscode.WorkspaceConfiguration, workspaceRoot: string): string {
+    const rootPath = config.get<string>('rootPath')?.trim();
+    if (!rootPath) { return workspaceRoot; }
+    const resolved = path.resolve(workspaceRoot, rootPath);
+    // Reject paths outside the workspace
+    const relative = path.relative(workspaceRoot, resolved);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) { return workspaceRoot; }
+    return resolved;
   }
 
   private isLocalResource(path: string) {

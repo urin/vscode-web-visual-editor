@@ -159,6 +159,11 @@
           "default": true,
           "description": "Enable moving position of elements in preview."
         },
+        "webVisualEditor.rootPath": {
+          "type": "string",
+          "default": "",
+          "description": "Root directory for resolving root-relative paths (e.g. /styles/main.css). Specified as a path relative to the workspace root. Must be inside the workspace. Defaults to the workspace root."
+        },
         "webVisualEditor.globalScripts": {
           "type": "array",
           "default": [],
