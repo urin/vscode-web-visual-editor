@@ -20,13 +20,41 @@ Edit HTML files visually in real-time.
 
 ### ⚙️ Settings (`settings.json`)
 
-- `webVisualEditor.enableMovingElements`<br>
-  Enable drag-to-move and keyboard nudge for positioned elements. Default: `false`.
-- `webVisualEditor.allowScript`<br>
-  Allow `<script>` tags and `on*` event attributes to run inside the WebView. Default: `false`.
+#### `webVisualEditor.enableMovingElements`
+Enable drag-to-move and keyboard nudge for positioned elements. Default: `false`.
 
 > [!TIP]
 > When `enableMovingElements` is enabled, moving an element rewrites its tag using VSCode's HTML formatting. To avoid inconsistent indentation, **format the entire document before starting visual editing** (`Shift+Alt+F`).
+
+#### `webVisualEditor.allowScript`
+Allow `<script>` tags and `on*` event attributes to run inside the WebView. Default: `false`.
+
+#### `webVisualEditor.rootPath`
+Root directory for resolving root-relative paths (e.g. `/styles/main.css`). Specified as a path relative to the workspace root. Must be inside the workspace. Defaults to the workspace root.
+
+> [!NOTE]
+> Absolute paths are not supported. Since both absolute paths and root-relative paths begin with `/` on Unix-like systems, they cannot be distinguished. Paths starting with `/` are always interpreted as root-relative.
+
+#### `webVisualEditor.globalScripts`
+List of scripts to inject into all HTML pages in the preview. Each entry is either a URL or a local path.
+
+> [!NOTE]
+> `globalScripts` takes effect only when `allowScript` is `true`.
+
+```jsonc
+// settings.json
+{
+  "webVisualEditor.allowScript": true,
+  "webVisualEditor.globalScripts": [
+    "https://cdn.tailwindcss.com",  // CDN URL
+    "/scripts/inject.js"             // root-relative path
+  ]
+}
+```
+
+> [!TIP]
+> Root-relative paths in `globalScripts` are resolved using `rootPath`.
+> Local script files are tracked: saving them automatically refreshes the preview.
 
 ### 🖱️ Multi-selection
 
