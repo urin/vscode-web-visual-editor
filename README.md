@@ -1,4 +1,4 @@
-# Web Visual Editor [![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)](https://api.star-history.com/svg?repos=urin/vscode-web-visual-editor&type=Timeline)
+# Web Visual Editor [![Stars](https://img.shields.io/github/stars/urin/vscode-web-visual-editor?style=flat)](https://star-history.dera.page/#urin/vscode-web-visual-editor&type=Timeline)
 
 Edit HTML files visually in real-time.
 
